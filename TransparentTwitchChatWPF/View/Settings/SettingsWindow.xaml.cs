@@ -22,6 +22,8 @@ public partial class SettingsWindow : Window
     private readonly WidgetSettingsPage _widgetSettingsPage;
     private readonly AboutSettingsPage _aboutSettingsPage;
 
+    public void ConfigureWidgetManager(MainWindow main) => _widgetSettingsPage.Configure(main);
+
     public SettingsWindow(
         ConnectionSettingsPage connectionPage,
         ChatSettingsPage chatPage,

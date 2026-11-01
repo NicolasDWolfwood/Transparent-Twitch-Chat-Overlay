@@ -1,6 +1,6 @@
 # Stream reliability preview
 
-Version 1.1.9-preview.3 implements the ten stream reliability improvements on top
+Version 1.1.9-preview.4 adds a widget manager and includes the ten stream reliability improvements on top
 of this fork's v1.1.8. The original application is by Baffler; this is an independent fork.
 
 ## OBS and OVR Toolkit
@@ -25,6 +25,29 @@ Audio devices are resolved for each playback, falling back to the Windows defaul
 when a saved headset is unavailable. Missing files and unavailable outputs report
 recoverable errors. Reconnect a headset and play another sound to retry.
 
+## Widget manager
+
+Open **Settings > Widgets** to see all saved, live widget windows, including hidden
+ones. Select a widget and use **Show/Hide**, **Edit**, **Reload**, **Bring into view**,
+or **Delete**. Edit changes its display name, URL, custom CSS and interaction setting
+without replacing its window or losing its saved size, position and appearance.
+Duplicate and unsupported URLs are rejected. Source labels display hostnames only,
+so private provider paths and query tokens do not appear in the list.
+
+Widget actions apply immediately, even if Settings is later closed with Cancel.
+Delete asks for confirmation and removes the widget from the saved widget list.
+Hidden widgets keep running and can still play audio. Show exits global Hide all
+overlays mode while preserving other individually hidden widgets. Bring into view
+shows the selected widget on the primary monitor with window controls visible;
+use it off stream if that monitor is captured. Close Settings to interact with it.
+
+The thin yellow Windows Graphics Capture indicator is controlled by the capture
+application, such as OVR Toolkit, rather than this overlay. On Windows 11, check
+Settings > Privacy & security > Screenshot borders and allow desktop apps to turn
+off the screenshot border, then restart the capture app. It must also request
+borderless capture; the permission alone is not a guarantee. This is separate
+from the chat overlay's own Hide/Show Border control.
+
 ## Performance controls
 
 Settings > General offers reduced motion and NativeChat display intervals of
@@ -40,12 +63,12 @@ Sites that deliberately stop work while unfocused may need site-specific changes
 Use .NET SDK 8 and Node.js 24/npm on Windows:
 
 ```powershell
-powershell -NoProfile -File .\publish.ps1 -Version 1.1.9-preview.3
+powershell -NoProfile -File .\publish.ps1 -Version 1.1.9-preview.4
 ```
 
 The script runs Node tests, builds NativeChat, publishes a self-contained Windows
 x64 app, runs real WPF/WebView2 checks, and packages installer/portable/update
-assets and SHA-256 checksums in artifacts/packages-1.1.9-preview.3. The portable
+assets and SHA-256 checksums in artifacts/packages-1.1.9-preview.4. The portable
 ZIP must be fully extracted. Its profile stays with the portable installation;
 installer packages use the separate TransparentTwitchChatAlwaysOnTop app ID.
 Automatic update checks default to off and point at this fork.

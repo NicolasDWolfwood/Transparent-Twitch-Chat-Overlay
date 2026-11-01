@@ -104,6 +104,7 @@ public partial class MainWindow
         ApplyOverlayVisibility();
         foreach (var widget in windows.OfType<CustomWindow>().ToArray()) widget.Persist();
         App.Settings.Persist();
+        NotifyWidgetsChanged();
     }
 
     private void ShowOverlays_Click(object sender, RoutedEventArgs e) => SetOverlaysHidden(false);

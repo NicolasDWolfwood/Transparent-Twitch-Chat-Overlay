@@ -19,6 +19,7 @@ internal static partial class Program
         for (int pass = 0; pass < 2; pass++)
         {
             var dialog = provider.GetRequiredService<SettingsWindow>();
+            dialog.ConfigureWidgetManager(provider.GetRequiredService<MainWindow>());
             dialog.ShowActivated = false; dialog.Opacity = 0;
             dialog.WindowStartupLocation = WindowStartupLocation.Manual; dialog.Left = -10000;
             Exception failure = null;

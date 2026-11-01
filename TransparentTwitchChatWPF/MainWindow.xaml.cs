@@ -1045,6 +1045,8 @@ public partial class MainWindow : Window, BrowserWindow
             Debug.WriteLine("Creating new window with URL: " + URL);
             Debug.WriteLine("Custom CSS: " + CustomCSS);
             OpenNewCustomWindow(URL, displayName, CustomCSS, allowInteraction);
+            App.Settings.Persist();
+            NotifyWidgetsChanged();
         }
     }
 
@@ -1103,6 +1105,7 @@ public partial class MainWindow : Window, BrowserWindow
         try
         {
             var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
+            settingsWindow.ConfigureWidgetManager(this);
             settingsWindow.CreateWidgetRequested += window => CreateNewWindowDialog(window);
             settingsWindow.CheckForUpdateRequested += () => _ = CheckForUpdateAsync(true, settingsWindow);
             settingsWindow.RestoreNativeChatDefaultsRequested += RestoreNativeChatFiles;
@@ -1160,6 +1163,7 @@ public partial class MainWindow : Window, BrowserWindow
         if (App.Settings.GeneralSettings.CustomWindows.Contains(url))
         {
             App.Settings.GeneralSettings.CustomWindows.Remove(url);
+            App.Settings.GeneralSettings.WidgetIds?.Remove(url);
             App.Settings.Persist();
         }
     }

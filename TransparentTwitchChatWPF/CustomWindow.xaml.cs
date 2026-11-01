@@ -66,7 +66,7 @@ namespace TransparentTwitchChatWPF
             InitializeComponent();
             this.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
 
-            HashCode = Hasher.Create64BitHash(URL);
+            HashCode = main.GetWidgetTrackingId(URL);
             
             if (string.IsNullOrEmpty(displayName))
                 DisplayName = HashCode;
@@ -537,6 +537,8 @@ namespace TransparentTwitchChatWPF
 
                 DisplayName = name;
                 UpdateTitle();
+                Persist();
+                _mainWindow.NotifyWidgetsChanged();
             }
         }
 
@@ -664,7 +666,7 @@ namespace TransparentTwitchChatWPF
                 return;
             }
 
-            if (MessageBox.Show("This will delete the settings for this window. Are you sure?", "Remove Window", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+            if (MessageBox.Show(this, "Remove this widget from your saved widgets?", "Remove Widget", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
             {
                 this._mainWindow.RemoveCustomWindow(this.Url);
                 _isClosing = true;

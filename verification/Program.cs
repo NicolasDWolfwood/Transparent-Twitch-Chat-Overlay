@@ -147,6 +147,7 @@ internal static partial class Program
 
             CheckReliability(main, widget, page);
             CheckSettingsDialog(provider);
+            CheckWidgetManager(main, provider);
 
             App.IsShuttingDown = true;
             widget.Close();

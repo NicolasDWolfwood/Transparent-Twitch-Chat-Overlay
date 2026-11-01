@@ -203,6 +203,8 @@ public class AppSettings
 public class GeneralSettings
 {
     public StringCollection CustomWindows { get; set; } = new StringCollection();
+    // A stable tracking identity lets URL edits retain placement and appearance.
+    public Dictionary<string, string> WidgetIds { get; set; } = new();
     public string Username { get; set; } = string.Empty;
     public bool FadeChat { get; set; } = false;
     public string FadeTime { get; set; } = "120"; // fade time in seconds or "false"

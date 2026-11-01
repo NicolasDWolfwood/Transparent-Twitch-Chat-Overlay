@@ -1,14 +1,23 @@
-Fixes the duplicate **Chat connected** labels shown in earlier reliability previews.
-NativeChat now owns the single visible connection indicator inside the captured
-chat page. Connection health checks and automatic reconnect behavior remain active.
+Adds a central widget manager under **Settings > Widgets**.
 
-Also includes the Settings-opening fix from v1.1.9-preview.2 and all ten stream
-reliability improvements. Existing settings remain compatible.
+- List existing widgets, including hidden ones.
+- Show/hide, edit name/URL/custom CSS/interaction, reload, or delete with confirmation.
+- Bring hidden, minimized or off-screen widgets onto the primary monitor.
+- Keep the same window and saved placement/appearance when editing URLs.
+- Hide private overlay paths and tokens from list labels.
 
-Validated locally with **79 Windows integration checks and 18 JavaScript tests**.
-The connection-status checks exercise the actual packaged JavaScript in a real
-WebView, verify exactly one page badge, verify no duplicate native badge, and
-check repeated reconnects. Full Settings open/navigation/reopen/Save checks pass.
+Actions apply immediately, including when closing Settings with Cancel. Hidden
+widgets keep running and may play audio. **Bring into view** moves a widget onto
+your primary monitor: use it off stream if that monitor is captured.
+
+Includes the single connection-indicator fix, the Settings-opening fix and all
+ten stream reliability improvements. Existing settings remain compatible.
+
+Validated locally with **101 Windows integration checks and 18 JavaScript tests**. Coverage includes
+real WPF/WebView2 windows, full Settings open/reopen/Save,
+widget Edit/Cancel, visibility, renderer reload, URL edits and disk persistence,
+duplicate URL rejection, off-screen recovery, capture handle preservation,
+private URL labels, and the existing chat reliability checks.
 
 Download the Windows x64 installer or fully extract the portable ZIP. SHA-256
 checksums are included. For OBS/OVR Toolkit, turn off Always on top under Settings

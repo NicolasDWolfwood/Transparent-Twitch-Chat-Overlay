@@ -62,6 +62,7 @@ public partial class CustomWindow
         _lifetime.Cancel();
         CleanupBrowser();
         _mainWindow.UnregisterWidget(this);
+        _mainWindow.NotifyWidgetsChanged();
         base.OnClosed(e);
     }
 
@@ -77,6 +78,7 @@ public partial class CustomWindow
         IsHidden = true;
         Persist();
         ApplyGroupVisibility(false);
+        _mainWindow.NotifyWidgetsChanged();
     }
 
     public void RestoreDisplayState()
