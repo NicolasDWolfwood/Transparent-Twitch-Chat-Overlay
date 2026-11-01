@@ -2,7 +2,7 @@
 
 	<!-- main property group -->
 	<PropertyGroup>
-		<Version>1.1.9-preview.2</Version>
+		<Version>1.1.9-preview.3</Version>
 		<TargetFramework>net8.0-windows</TargetFramework>
 		<OutputType>WinExe</OutputType>
 		<StartupObject>TransparentTwitchChatWPF.App</StartupObject>

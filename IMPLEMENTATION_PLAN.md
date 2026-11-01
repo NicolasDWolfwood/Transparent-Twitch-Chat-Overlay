@@ -1,7 +1,7 @@
 # Stream reliability implementation
 
 Baseline: v1.1.8 (`57fced5`). Branch: `improvements/stream-reliability`.
-Delivery: Windows x64 v1.1.9-preview.2, for OBS/OVR Toolkit acceptance.
+Delivery: Windows x64 v1.1.9-preview.3, for OBS/OVR Toolkit acceptance.
 
 All ten implementation items are complete:
 
@@ -20,7 +20,7 @@ All ten implementation items are complete:
 
 ## Local verification
 
-- 76 WPF/WebView2/native-window checks passed, including all 24 v1.1.8 checks.
+- 79 WPF/WebView2/native-window checks passed, including all 24 v1.1.8 checks.
 - 18 deterministic Node checks cover heartbeat/reconnect/startup, status badge,
   fair animation delivery, cancellation and reversible motion settings.
 - Two-widget measurement, requested 1.2-second intervals: unlimited 226/226
@@ -55,3 +55,12 @@ the literal-string URI converter to the markup-extension result. A typed
 AppInfo.RepositoryUri property fixes this. The full dialog was not covered by the
 original 61 checks; preview.2 adds real modal open, page navigation, close/reopen,
 hyperlink type validation and Save checks. The expanded suite passes 76 checks.
+
+## Single connection indicator
+
+Preview.3 removes the native WPF status badge, which duplicated the badge inside
+NativeChat. The page owns the one visible indicator; the host only tracks the
+reported connection state. Integration checks now load the reporter from the
+packaged NativeChat ZIP into a real WebView and verify one visible page badge,
+no duplicate native badge, and badge reuse across reconnects. The complete
+Windows suite passes 79 checks. The Settings fix from preview.2 remains included.

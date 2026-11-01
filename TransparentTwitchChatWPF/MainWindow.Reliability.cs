@@ -13,6 +13,7 @@ public partial class MainWindow
     private bool _isClosing;
     private bool _widgetsRestored;
     public bool IsClosing => _isClosing;
+    public string NativeChatConnectionState { get; private set; } = string.Empty;
     public const string CaptureTitle = "Twitch Chat Overlay — Main";
 
     public Task RetryBrowserAsync()

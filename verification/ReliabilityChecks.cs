@@ -178,14 +178,31 @@ internal static partial class Program
         Check(widget.IsVisible && widget.Title == captureTitle, "real widget renderer crash recovers without closing the window");
 
         string healthPage = Path.Combine(AppContext.BaseDirectory, "browser", "overlays", "native-chat", "verification-status.html");
-        File.WriteAllText(healthPage, "<html><body>Local health test<script>setTimeout(()=>chrome.webview.postMessage({type:'NativeChatConnection',state:'reconnecting'}),100)</script></body></html>");
+        // Exercise the actual packaged page-side reporter and the native host together.
+        using (var resource = typeof(MainWindow).Assembly.GetManifestResourceStream("TransparentTwitchChatWPF.Resources.native-chat.zip"))
+        using (var archive = new System.IO.Compression.ZipArchive(resource))
+        {
+            string reporter = archive.Entries.Where(entry => entry.FullName.EndsWith(".js"))
+                .Select(entry => { using var reader = new StreamReader(entry.Open()); return reader.ReadToEnd(); })
+                .Single(script => script.Contains("ttco-connection-status"));
+            File.WriteAllText(Path.Combine(Path.GetDirectoryName(healthPage), "verification-connection-health.js"), reporter);
+        }
+        File.WriteAllText(healthPage, "<html><body>Local health test<script src='verification-connection-health.js'></script><script>TTCOChatConnection.reportState({state:'reconnecting'},chrome.webview)</script></body></html>");
         settings.ChatType = (int)ChatTypes.NativeChat;
         var healthView = GetField<WebView2>(main, "webView");
         healthView.CoreWebView2.Navigate("https://nativechat.overlay/verification-status.html");
-        PumpUntil(() => ((System.Windows.Controls.TextBlock)main.FindName("ConnectionStatusText")).Text.Contains("retrying"));
-        Check(((FrameworkElement)main.FindName("ConnectionStatusPanel")).Visibility == Visibility.Visible, "native connection loss produces a visible overlay status");
-        Eval(healthView, "chrome.webview.postMessage({type:'NativeChatConnection',state:'connected'})");
-        PumpUntil(() => ((System.Windows.Controls.TextBlock)main.FindName("ConnectionStatusText")).Text == "Chat connected");
+        PumpUntil(() => main.NativeChatConnectionState == "reconnecting");
+        Check(JsonSerializer.Deserialize<bool>(Eval(healthView, "document.getElementById('ttco-connection-status').textContent.includes('disconnected') && document.getElementById('ttco-connection-status').getBoundingClientRect().height > 0")),
+            "native connection loss produces a visible in-page status");
+        Eval(healthView, "TTCOChatConnection.reportState({state:'connected'},chrome.webview)");
+        PumpUntil(() => main.NativeChatConnectionState == "connected");
+        Check(Number(healthView, "document.querySelectorAll('#ttco-connection-status').length") == 1,
+            "connected chat has exactly one in-page badge");
+        Check(main.FindName("ConnectionStatusPanel") == null,
+            "native host does not draw a duplicate connection badge");
+        Eval(healthView, "TTCOChatConnection.reportState({state:'reconnecting'},chrome.webview);TTCOChatConnection.reportState({state:'connected'},chrome.webview)");
+        Check(Number(healthView, "document.querySelectorAll('#ttco-connection-status').length") == 1,
+            "repeated reconnects reuse the same connection badge");
         Check(main.Title == MainWindow.CaptureTitle, "connection status changes preserve capture identity");
         settings.ChatType = (int)ChatTypes.CustomURL;
         Invoke(main, "SetupChatProvider");

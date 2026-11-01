@@ -980,18 +980,9 @@ public partial class MainWindow : Window, BrowserWindow
                     if (type == "NativeChatConnection")
                     {
                         if (!e.Source.StartsWith("https://nativechat.overlay/", StringComparison.OrdinalIgnoreCase)) return;
-                        string state = root.TryGetProperty("state", out var stateValue) ? stateValue.GetString() : "";
-                        ConnectionStatusText.Text = state switch {
-                            "loading" => "Preparing chat…",
-                            "invalid-channel" => "Set your Twitch channel in Settings.",
-                            "connected" => "Chat connected",
-                            "connecting" => "Connecting chat…",
-                            "joining" => "Joining channel…",
-                            "reconnecting" => "Chat disconnected — retrying…",
-                            _ => "Chat disconnected"
-                        };
-                        ConnectionStatusPanel.Visibility = Visibility.Visible;
-                        ConnectionStatusText.Foreground = state == "connected" ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Orange;
+                        // NativeChat renders its own status inside the captured page.
+                        // Track state without drawing a second badge over the WebView.
+                        NativeChatConnectionState = root.TryGetProperty("state", out var stateValue) ? stateValue.GetString() ?? "" : "";
                         return;
                     }
                     if (type == "NativeChatReady")
@@ -1357,7 +1348,7 @@ public partial class MainWindow : Window, BrowserWindow
 
     private void SetupChatProvider()
     {
-        ConnectionStatusPanel.Visibility = Visibility.Collapsed;
+        NativeChatConnectionState = string.Empty;
         string localIndex = LocalHtmlHelper.GetIndexHtmlPath();
         bool success = false;
         try
