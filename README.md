@@ -30,6 +30,12 @@ Always on top initially remains enabled for compatibility. Update checks default
 ![Screenshot](https://i.imgur.com/B3SDcrk.png)
 
 ## Adding widgets (subs/follows/viewer count/etc...)
+This fork includes **Settings > Widgets** to manage existing widgets. Select one
+to show/hide, edit its name/URL/CSS, reload it, bring it onto the primary monitor,
+or remove it after confirmation. Actions apply immediately and preserve the
+widget's settings. Use **Bring into view** off stream if your primary monitor is
+captured. Hidden widgets may continue to play audio.
+
 Some commonly requested features can usually be added with widgets. Please check out the wiki for an explanation on how to do this: https://github.com/baffler/Transparent-Twitch-Chat-Overlay/wiki
 
 ## Star History

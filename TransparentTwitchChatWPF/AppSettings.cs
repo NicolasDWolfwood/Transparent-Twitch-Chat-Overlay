@@ -203,6 +203,8 @@ public class AppSettings
 public class GeneralSettings
 {
     public StringCollection CustomWindows { get; set; } = new StringCollection();
+    // A stable tracking identity lets URL edits retain placement and appearance.
+    public Dictionary<string, string> WidgetIds { get; set; } = new();
     public string Username { get; set; } = string.Empty;
     public bool FadeChat { get; set; } = false;
     public string FadeTime { get; set; } = "120"; // fade time in seconds or "false"
@@ -218,6 +220,14 @@ public class GeneralSettings
     public byte OpacityLevel { get; set; } = 0;
     public bool AutoHideBorders { get; set; } = false;
     public bool AlwaysOnTop { get; set; } = true;
+    public bool MainBordersHidden { get; set; } = false;
+    public bool WidgetsOnly { get; set; } = false;
+    public bool OverlaysHidden { get; set; } = false;
+    public bool ReduceMotion { get; set; } = false;
+    public int ChatUpdateIntervalMs { get; set; } = 200;
+    public Hotkey ToggleVisibilityHotkey { get; set; } = new Hotkey(Key.F10, ModifierKeys.Control | ModifierKeys.Alt);
+    public Hotkey ShowOverlaysHotkey { get; set; }
+    public Hotkey HideOverlaysHotkey { get; set; }
     public bool EnableTrayIcon { get; set; } = true;
     public bool ConfirmClose { get; set; } = true;
     public bool HideTaskbarIcon { get; set; } = false;

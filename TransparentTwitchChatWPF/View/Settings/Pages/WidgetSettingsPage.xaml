@@ -1,45 +1,54 @@
-﻿<UserControl x:Class="TransparentTwitchChatWPF.View.Settings.WidgetSettingsPage"
+<UserControl x:Class="TransparentTwitchChatWPF.View.Settings.WidgetSettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:TransparentTwitchChatWPF.View.Settings"
-             xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
              xmlns:ui="http://schemas.modernwpf.com/2019"
-             ui:ThemeManager.RequestedTheme="Dark"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Name="widgetGrid" Visibility="Visible" Margin="5,5,0,0" Grid.Row="0">
+             ui:ThemeManager.RequestedTheme="Dark">
+    <Grid Margin="15,12,15,8">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+            <RowDefinition Height="*" /><RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <StackPanel Grid.Row="0">
-            <Button
-                Name="NewWidgetButton"
-                Content="Create Widget"
-                Height="32"
-                FontWeight="Bold"
-                HorizontalAlignment="Left" 
-                Margin="20,10,0,0"
-                VerticalAlignment="Top" 
-                Width="135" 
-                Click="NewWidgetButton_Click" />
-            <TextBlock 
-                Margin="5,10,5,0"
-                TextWrapping="Wrap"
-                Text="To see follows/subs/viewers/etc then you create a widget" />
-            <TextBlock 
-                Margin="5,5,5,0"
-                TextWrapping="Wrap"
-                Text="For information on how to do that please check the wiki at:" />
-            
-            <Label Margin="0,0,0,0">
-                <Hyperlink NavigateUri = "https://github.com/baffler/Transparent-Twitch-Chat-Overlay/wiki"
-                       Hyperlink.RequestNavigate = "Hyperlink_RequestNavigate" >
-                    <TextBlock Text="https://github.com/baffler/Transparent-Twitch-Chat-Overlay/wiki" />
-                </Hyperlink>
-            </Label>
-        </StackPanel>
+        <DockPanel>
+            <Button x:Name="NewWidgetButton" DockPanel.Dock="Right" Content="Create Widget" Padding="12,5" Click="NewWidgetButton_Click" />
+            <TextBlock x:Name="WidgetCountText" Text="Saved widgets" Foreground="#EEEEEE" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </DockPanel>
+        <TextBlock Grid.Row="1" Text="Select a widget to manage it. Changes here apply immediately, including when you close Settings with Cancel."
+                   TextWrapping="Wrap" Margin="0,10,0,10" Foreground="#BBBBBB" />
+        <Grid Grid.Row="2" MinHeight="90">
+            <ListBox x:Name="WidgetList" SelectionChanged="WidgetList_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     HorizontalContentAlignment="Stretch" AutomationProperties.Name="Saved widgets">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="5,6">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Source}" Foreground="#AAAAAA" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,3,12,0" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Status}" Margin="12,0,0,0" Foreground="#BBBBBB" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock x:Name="EmptyText" Text="No widgets yet. Choose Create Widget to add one." TextWrapping="Wrap" Margin="20"
+                       VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False" Foreground="#AAAAAA" />
+        </Grid>
+        <WrapPanel Grid.Row="3" Margin="0,10,0,0">
+            <Button x:Name="VisibilityButton" Content="Show" Padding="10,5" Margin="0,0,6,6" IsEnabled="False" Click="VisibilityButton_Click" />
+            <Button x:Name="EditButton" Content="Edit" Padding="10,5" Margin="0,0,6,6" IsEnabled="False" Click="EditButton_Click" />
+            <Button x:Name="ReloadButton" Content="Reload" Padding="10,5" Margin="0,0,6,6" IsEnabled="False" Click="ReloadButton_Click" />
+            <Button x:Name="LocateButton" Content="Bring into view" Padding="10,5" Margin="0,0,6,6" IsEnabled="False" Click="LocateButton_Click"
+                    ToolTip="Show this widget on the primary monitor with its window controls visible." />
+            <Button x:Name="DeleteButton" Content="Delete" Padding="10,5" Margin="0,0,0,6" IsEnabled="False" Click="DeleteButton_Click" />
+        </WrapPanel>
+        <TextBlock x:Name="WidgetStatusText" Grid.Row="4" TextWrapping="Wrap" Foreground="#FFFFC65C" Margin="0,3,0,5" />
+        <TextBlock Grid.Row="5" Text="Hidden widgets keep running and may still play audio. Show also exits Hide all overlays mode; Bring into view moves the selected widget onto your primary monitor."
+                   TextWrapping="Wrap" FontSize="11" Foreground="#AAAAAA" />
     </Grid>
 </UserControl>

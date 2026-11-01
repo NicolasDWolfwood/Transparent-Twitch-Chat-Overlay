@@ -12,6 +12,16 @@
     <Grid Name="generalGrid" Visibility="Visible" Grid.Row="0">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="0,10,0,20">
+                <CheckBox x:Name="cbWidgetsOnly" Content="Widgets only (hide main chat)" Margin="20,5" />
+                <CheckBox x:Name="cbReduceMotion" Content="Reduce motion in chat and widgets" Margin="20,5" />
+                <Label Content="Chat display update interval" Margin="15,8,20,3" />
+                <ComboBox x:Name="chatUpdateInterval" Margin="20,3,20,8" SelectedValuePath="Tag">
+                    <ComboBoxItem Content="Responsive (100 ms)" Tag="100" />
+                    <ComboBoxItem Content="Balanced (200 ms)" Tag="200" />
+                    <ComboBoxItem Content="Low overhead (500 ms)" Tag="500" />
+                    <ComboBoxItem Content="Minimal updates (1000 ms)" Tag="1000" />
+                </ComboBox>
+
                 <CheckBox
                     Name="cbAlwaysOnTop"
                     Content="Always on top"
@@ -99,6 +109,22 @@
                 <Label Margin="15,5,0,0" HorizontalAlignment="Left" FontStyle="Italic" Content="Since hotkeys are global, consider using modifier keys" />
                 <Label Margin="15,5,0,0" HorizontalAlignment="Left" FontStyle="Italic" Content="Otherwise you can't use that key in other apps!" />
 
+                <TextBlock x:Name="hotkeyStatus" Foreground="#FFFFC65C" Margin="20,5" TextWrapping="Wrap" />
+                <Label Content="Toggle all overlays hotkey" Margin="15,10,0,0" />
+                <StackPanel Orientation="Horizontal">
+                    <ttc:HotkeyEditorControl x:Name="hotkeyInputToggleVisibility" Width="250" Margin="15,5,0,0" />
+                    <Button Content="Capture Hotkey" Tag="hotkeyInputToggleVisibility" Click="CaptureVisibilityHotkey_Click" Margin="15,5,0,0" />
+                </StackPanel>
+                <Label Content="Show all overlays hotkey" Margin="15,10,0,0" />
+                <StackPanel Orientation="Horizontal">
+                    <ttc:HotkeyEditorControl x:Name="hotkeyInputShowOverlays" Width="250" Margin="15,5,0,0" />
+                    <Button Content="Capture Hotkey" Tag="hotkeyInputShowOverlays" Click="CaptureVisibilityHotkey_Click" Margin="15,5,0,0" />
+                </StackPanel>
+                <Label Content="Hide all overlays hotkey" Margin="15,10,0,0" />
+                <StackPanel Orientation="Horizontal">
+                    <ttc:HotkeyEditorControl x:Name="hotkeyInputHideOverlays" Width="250" Margin="15,5,0,0" />
+                    <Button Content="Capture Hotkey" Tag="hotkeyInputHideOverlays" Click="CaptureVisibilityHotkey_Click" Margin="15,5,0,0" />
+                </StackPanel>
                 <Label Margin="15,15,0,0" HorizontalAlignment="Left" Content="Toggle Borders Hotkey"  />
                 <StackPanel Orientation="Horizontal">
                     <ttc:HotkeyEditorControl x:Name="hotkeyInputToggleBorders" Margin="15,5,0,0" Width="250" HorizontalAlignment="Left" />

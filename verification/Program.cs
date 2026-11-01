@@ -17,7 +17,7 @@ using TransparentTwitchChatWPF.View.Settings;
 using TwitchLib.EventSub.Websockets.Extensions;
 using Application = System.Windows.Application;
 
-internal static class Program
+internal static partial class Program
 {
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     private static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
@@ -56,21 +56,33 @@ internal static class Program
             services.AddSingleton<WebViewConfigurator>();
             services.AddSingleton<NativeChatFileManager>();
             services.AddSingleton<MainWindow>();
+            services.AddSingleton<ITwitchAuthService, TwitchAuthService>();
+            services.AddTransient<ConnectionSettingsPage>();
+            services.AddTransient<ChatSettingsPage>();
+            services.AddTransient<AppearanceSettingsPage>();
+            services.AddTransient<GeneralSettingsPage>();
+            services.AddTransient<WidgetSettingsPage>();
+            services.AddTransient<AboutSettingsPage>();
+            services.AddTransient<SettingsWindow>();
             using var provider = services.BuildServiceProvider();
             var main = provider.GetRequiredService<MainWindow>();
             main.ShowActivated = false;
             main.ShowInTaskbar = false;
             main.Opacity = 0;
             main.Show();
+            main.Left = -10000;
             PumpUntil(() => GetField<WebView2>(main, "webView")?.CoreWebView2 != null);
             PumpUntil(() => GetField<object>(main, "jsCallbackFunctions") != null);
+            PumpUntil(() => GetField<Task>(main, "_browserRecoveryTask").IsCompleted);
 
             var widget = new CustomWindow(main, "about:blank", "Verification widget", "", true);
             widget.ShowActivated = false;
             widget.ShowInTaskbar = false;
             widget.Opacity = 0;
             widget.Show();
+            widget.Left = -10000;
             PumpUntil(() => GetField<WebView2>(widget, "webView")?.CoreWebView2 != null);
+            PumpUntil(() => GetField<Task>(widget, "_browserRecoveryTask").IsCompleted);
             GetField<System.Collections.IList>(main, "windows").Add(widget);
 
             CheckTopmost(main, false, "main starts with saved off setting");
@@ -133,9 +145,11 @@ internal static class Program
             Check(!restored.GeneralSettings.AlwaysOnTop, "off setting survives a disk reload");
             Check(new GeneralSettings().AlwaysOnTop, "older settings without the property retain original default");
 
+            CheckReliability(main, widget, page);
+            CheckSettingsDialog(provider);
+            CheckWidgetManager(main, provider);
+
             App.IsShuttingDown = true;
-            GetField<WebView2>(widget, "webView").Dispose();
-            GetField<WebView2>(main, "webView").Dispose();
             widget.Close();
             main.Close();
             Console.WriteLine($"PASS: {checks} checks");

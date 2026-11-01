@@ -19,15 +19,25 @@ namespace TransparentTwitchChatWPF
     /// </summary>
     public partial class Input_Custom : Window
     {
-        public Input_Custom(string Url = "")
+        public Func<string, string> ValidateInput { get; set; }
+        public Input_Custom(string Url = "", string displayName = "", string css = null, bool allowInteraction = false)
         {
             InitializeComponent();
             tbCustomCSS.SyntaxHighlighting = ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance.GetDefinition("CSS");
             txtUrl.Text = Url;
+            txtName.Text = displayName;
+            if (css != null) tbCustomCSS.Text = css;
+            cbAllowInteraction.IsChecked = allowInteraction;
         }
 
         private void btnDialogOk_Click(object sender, RoutedEventArgs e)
         {
+            var error = ValidateInput?.Invoke(txtUrl.Text);
+            if (!string.IsNullOrEmpty(error))
+            {
+                MessageBox.Show(this, error, "Edit Widget", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
             this.DialogResult = true;
         }
 

@@ -59,6 +59,16 @@
                         <ui:TitleBarButton.ContextMenu>
                             <ContextMenu x:Name="settingsBtnContextMenu" 
                                          ui:ThemeManager.RequestedTheme="Dark">
+                                <MenuItem Header="Hide window (keep settings)" Click="HideWindow_Click" />
+                                <MenuItem Header="Performance">
+                                    <MenuItem x:Name="menuReduceMotion" Header="Reduce motion" IsCheckable="True" Click="ReduceMotion_Click" />
+                                    <MenuItem x:Name="menuAnimationRate" Header="Animation frame limit" ToolTip="Limits scripted animations. Video playback and CSS effects may differ.">
+                                        <MenuItem Header="Unlimited" Tag="0" IsCheckable="True" Click="AnimationFps_Click" />
+                                        <MenuItem Header="60 FPS" Tag="60" IsCheckable="True" Click="AnimationFps_Click" />
+                                        <MenuItem Header="30 FPS" Tag="30" IsCheckable="True" Click="AnimationFps_Click" />
+                                        <MenuItem Header="15 FPS" Tag="15" IsCheckable="True" Click="AnimationFps_Click" />
+                                    </MenuItem>
+                                </MenuItem>
                                 <MenuItem Header="Zoom Level">
                                     <MenuItem.Icon>
                                         <Image Source="/assets/images/zoom.png" Width="16" Height="16"
@@ -205,5 +215,11 @@
                 </Border>
             </Grid>
         </Grid>
+        <Border x:Name="BrowserErrorPanel" Visibility="Collapsed" Background="#EE252525" Padding="16" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="320" Panel.ZIndex="100">
+            <StackPanel>
+                <TextBlock x:Name="BrowserErrorText" Foreground="White" TextWrapping="Wrap" />
+                <Button Content="Retry" Margin="0,12,0,0" Click="RetryBrowser_Click" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>

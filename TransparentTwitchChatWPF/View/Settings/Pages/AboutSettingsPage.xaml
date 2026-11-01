@@ -48,7 +48,7 @@
 
                 <TextBlock Text="Resources" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,8,0,0"/>
 
-                <ui:HyperlinkButton NavigateUri="{x:Static ttc:AppInfo.RepositoryUrl}">
+                <ui:HyperlinkButton x:Name="RepositoryLink" NavigateUri="{x:Static ttc:AppInfo.RepositoryUri}">
                     <ui:SimpleStackPanel Orientation="Horizontal" Spacing="8">
                         <ui:SymbolIcon Symbol="Link"/>
                         <TextBlock Text="GitHub Repository"/>

@@ -1,15 +1,28 @@
-Adds an **Always on top** checkbox under **Settings > General**, so chat can stay behind OBS while OVR Toolkit captures it in VR.
+Adds a central widget manager under **Settings > Widgets**.
 
-- Saving applies the setting immediately to the main chat window and existing widgets, and remembers it across launches.
-- Turning it off prevents focus changes, border changes, click-through controls, and the Bring to Top timer from making chat topmost again.
-- Newly opened widgets follow the same setting.
-- Portable WebView2 data stays with the portable settings folder.
-- Update checks and release links now follow this NicolasDWolfwood fork. Automatic checks default to off.
+- List existing widgets, including hidden ones.
+- Show/hide, edit name/URL/custom CSS/interaction, reload, or delete with confirmation.
+- Bring hidden, minimized or off-screen widgets onto the primary monitor.
+- Keep the same window and saved placement/appearance when editing URLs.
+- Hide private overlay paths and tokens from list labels.
 
-**For OBS and OVR Toolkit:** open Settings > General, uncheck Always on top, and click Save. The initial setting stays on for compatibility. Keep chat open and unminimized. OVR Toolkit can independently bring windows forward when you interact with them; its Disable alt tabbing option can reduce that behavior.
+Actions apply immediately, including when closing Settings with Cancel. Hidden
+widgets keep running and may play audio. **Bring into view** moves a widget onto
+your primary monitor: use it off stream if that monitor is captured.
 
-Windows x64 downloads include an installer, a portable ZIP, and SHA-256 checksums. Extract the entire portable ZIP before running its launcher.
+Includes the single connection-indicator fix, the Settings-opening fix and all
+ten stream reliability improvements. Existing settings remain compatible.
 
-Validation: 24 WPF/native-window and settings-persistence checks passed locally. Headset capture still needs testing in an OVR Toolkit session.
+Validated locally with **101 Windows integration checks and 18 JavaScript tests**. Coverage includes
+real WPF/WebView2 windows, full Settings open/reopen/Save,
+widget Edit/Cancel, visibility, renderer reload, URL edits and disk persistence,
+duplicate URL rejection, off-screen recovery, capture handle preservation,
+private URL labels, and the existing chat reliability checks.
 
-This is an independent fork release. The original application is by [Baffler](https://github.com/baffler/Transparent-Twitch-Chat-Overlay). It includes the current source baseline, which contains all commits from upstream v1.1.7 and 18 subsequent upstream commits.
+Download the Windows x64 installer or fully extract the portable ZIP. SHA-256
+checksums are included. For OBS/OVR Toolkit, turn off Always on top under Settings
+> General and keep the captured window unminimized. This remains a preview for
+actual VR capture and physical headset-reconnection testing.
+
+Independent fork by NicolasDWolfwood; original application by
+[Baffler](https://github.com/baffler/Transparent-Twitch-Chat-Overlay).

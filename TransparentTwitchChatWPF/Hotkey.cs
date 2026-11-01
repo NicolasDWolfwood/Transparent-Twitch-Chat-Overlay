@@ -13,6 +13,8 @@ namespace TransparentTwitchChatWPF
 
         public ModifierKeys Modifiers { get; }
 
+        [Newtonsoft.Json.JsonConstructor]
+        [System.Text.Json.Serialization.JsonConstructor]
         public Hotkey(Key key, ModifierKeys modifiers)
         {
             Key = key;
