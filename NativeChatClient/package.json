@@ -1,10 +1,10 @@
 {
   "name": "native-chat",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Native Chat is a static, self-hosted chat overlay for use with Transparent Twitch Chat Overlay. Forked from Cyan Chat (originally based on JChat), it runs from local files to ensure fast, reliable rendering without requiring a remote web server.",
   "main": "webpack.config.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test tests/*.test.js",
     "generate-version": "node generate-version-json.js",
     "build": "webpack --mode production && npm run generate-version",
     "build:dev": "webpack --mode development && npm run generate-version",

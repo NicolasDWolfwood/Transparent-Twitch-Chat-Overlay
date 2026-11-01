@@ -15,11 +15,11 @@ public static class WebView2EnvironmentManager
     public static Task<CoreWebView2Environment> GetEnvironmentAsync()
     {
         // If the task is null, create it. This ensures the environment is only created once.
-        if (_environmentTask == null)
+        if (_environmentTask == null || _environmentTask.IsFaulted || _environmentTask.IsCanceled)
         {
             var options = new CoreWebView2EnvironmentOptions()
             {
-                AdditionalBrowserArguments = "--autoplay-policy=no-user-gesture-required --disable-background-timer-throttling --msWebView2CancelInitialNavigation"
+                AdditionalBrowserArguments = "--autoplay-policy=no-user-gesture-required --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --msWebView2CancelInitialNavigation"
             };
 
             string userDataFolder = App.Settings.UserDataFolder;

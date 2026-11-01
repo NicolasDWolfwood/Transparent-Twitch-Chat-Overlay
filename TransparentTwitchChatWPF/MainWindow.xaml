@@ -25,6 +25,10 @@
     </Window.Resources>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
         <Grid Name="mainWindowGrid">
             <Grid.RowDefinitions>
@@ -44,6 +48,10 @@
                         <MenuItem Header="Hide/Show Border" Click="MenuItem_ToggleBorderVisible" />
                         <MenuItem Header="Toggle Interactable" Click="MenuItem_ToggleInteractable" />
                         <MenuItem Header="Bring To Top" Click="MenuItem_BringToTopTimer" />
+                        <MenuItem Header="Show all overlays" Click="ShowOverlays_Click" />
+                        <MenuItem Header="Hide all overlays" Click="HideOverlays_Click" />
+                        <MenuItem Header="Show main chat" Click="ShowMainChat_Click" />
+                        <MenuItem Header="Retry chat browser" Click="RetryBrowser_Click" />
                         <Separator />
                         <MenuItem Header="Dev Tools" Click="MenuItem_DevToolsClick" />
                         <MenuItem Header="Settings" Click="MenuItem_SettingsClick" />
@@ -170,5 +178,17 @@
                 </Border>
             </Grid>
         </Grid>
+        <Border x:Name="BrowserErrorPanel" Visibility="Collapsed" Background="#EE252525" Padding="16" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="320" Panel.ZIndex="100">
+            <StackPanel>
+                <TextBlock x:Name="BrowserErrorText" Foreground="White" TextWrapping="Wrap" />
+                <Button Content="Retry" Margin="0,12,0,0" Click="RetryBrowser_Click" />
+            </StackPanel>
+        </Border>
+        <Border x:Name="OperationStatusPanel" Grid.Row="1" Visibility="Collapsed" Background="#E0252525" Padding="8" Panel.ZIndex="101">
+            <TextBlock x:Name="OperationStatusText" Foreground="#FFFFC65C" TextWrapping="Wrap" />
+        </Border>
+        <Border x:Name="ConnectionStatusPanel" Visibility="Collapsed" Background="#C0202020" Padding="5" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,32,4,0" Panel.ZIndex="99" IsHitTestVisible="False">
+            <TextBlock x:Name="ConnectionStatusText" Foreground="White" FontSize="12" />
+        </Border>
     </Grid>
 </Window>

@@ -41,7 +41,6 @@ namespace TransparentTwitchChatWPF
         private Button _closeButton;
         private WebView2 webView;
         private bool hasWebView2Runtime = false;
-        private bool webViewProcessFailed = false;
 
         // Tracked properties
         public string Url { get; set; }
@@ -86,13 +85,14 @@ namespace TransparentTwitchChatWPF
                     cw.customCSS,
                     cw.customJS,
                     cw.AllowInteraction,
+                    cw.BordersHidden, cw.IsHidden, cw.ReduceMotion, cw.AnimationFps,
                     cw.Top, cw.Width, cw.Height, cw.Left, cw.WindowState
                 })
-                .PersistOn(nameof(Window.Closing))
-                .StopTrackingOn(nameof(Window.Closing));
+                .PersistOn(nameof(Window.Closed))
+                .StopTrackingOn(nameof(Window.Closed));
             App.Settings.Tracker.Track(this);
 
-            this.Title = DisplayName;
+            UpdateTitle();
 
             // TODO: Setting this here to make sure we use the URL passed in the constructor
             // otherwise it could load a value that is invalid possibly?
@@ -101,6 +101,9 @@ namespace TransparentTwitchChatWPF
             if (ZoomLevel <= 0) ZoomLevel = 1;
 
             menuItemCheckboxAllowInteraction.IsChecked = AllowInteraction;
+            menuReduceMotion.IsChecked = ReduceMotion;
+            if (!new[] { 0, 15, 30, 60 }.Contains(AnimationFps)) AnimationFps = 0;
+            UpdatePerformanceMenu();
 
             InitializeWebViewAsync();
         }
@@ -135,7 +138,7 @@ namespace TransparentTwitchChatWPF
             // Make sure the placeholder overlay is hidden
             PlaceholderOverlay.Visibility = Visibility.Collapsed;
 
-            await SetupWebViewAsync();
+            await RetryBrowserAsync();
         }
 
         private async Task SetupWebViewAsync()
@@ -155,7 +158,10 @@ namespace TransparentTwitchChatWPF
             this.mainWindowGrid.Children.Add(webView);
 
             // Initialize and subscribe to events.
+            _lifetime.Token.ThrowIfCancellationRequested();
             await webView.EnsureCoreWebView2Async(cwv2Environment);
+            _lifetime.Token.ThrowIfCancellationRequested();
+            await ApplyPerformanceSettingsAsync();
 
             //webView.CoreWebView2InitializationCompleted += webView_CoreWebView2InitializationCompleted;
             webView.NavigationCompleted += webView_NavigationCompleted;
@@ -170,7 +176,7 @@ namespace TransparentTwitchChatWPF
             SetupBrowser();
 
             // This ensures the display mode is set only after the browser is fully initialized.
-            SetDisplayMode(WindowDisplayMode.Setup);
+            RestoreDisplayState();
         }
 
         private void SetupBrowser()
@@ -198,6 +204,7 @@ namespace TransparentTwitchChatWPF
 
         public void SetDisplayMode(WindowDisplayMode mode)
         {
+            if (_isClosing) return;
             _currentMode = mode;
             var hwnd = new WindowInteropHelper(this).Handle;
             if (hwnd == IntPtr.Zero) return; // Exit if window isn't ready
@@ -222,8 +229,8 @@ namespace TransparentTwitchChatWPF
                     this.AppTitleBar.Visibility = Visibility.Visible;
                     this.FooterBar.Visibility = Visibility.Visible;
                     this.ResizeMode = ResizeMode.CanResizeWithGrip;
-                    this.webView.SetValue(Grid.RowSpanProperty, 1);
-                    this.ShowInTaskbar = true;
+                    this.webView?.SetValue(Grid.RowSpanProperty, 1);
+                    this.ShowInTaskbar = !App.Settings.GeneralSettings.HideTaskbarIcon;
 
                     SetCloseButtonVisibility(true);
                     UpdateTitle();
@@ -251,8 +258,8 @@ namespace TransparentTwitchChatWPF
                     this.AppTitleBar.Visibility = Visibility.Collapsed;
                     this.FooterBar.Visibility = Visibility.Collapsed;
                     this.ResizeMode = ResizeMode.NoResize;
-                    this.webView.SetValue(Grid.RowSpanProperty, 2);
-                    this.ShowInTaskbar = false;
+                    this.webView?.SetValue(Grid.RowSpanProperty, 2);
+                    this.ShowInTaskbar = !App.Settings.GeneralSettings.HideTaskbarIcon;
                     
                     SetCloseButtonVisibility(false);
                     UpdateTitle();
@@ -281,12 +288,16 @@ namespace TransparentTwitchChatWPF
 
         public async void drawBorders()
         {
+            if (_isClosing) return;
+            BordersHidden = false;
             SetDisplayMode(WindowDisplayMode.Setup);
             await ApplyWebPageStyles();
         }
 
         public async void hideBorders()
         {
+            if (_isClosing) return;
+            BordersHidden = true;
             SetDisplayMode(WindowDisplayMode.Overlay);
             await ApplyWebPageStyles();
         }
@@ -294,7 +305,7 @@ namespace TransparentTwitchChatWPF
         public void SetInteractable(bool interactable)
         {
             // --- Guard Clauses: Do nothing if conditions aren't met ---
-            if (!AllowInteraction) return; // Rule 1: setting must allow interaction.
+            if (_isClosing || !AllowInteraction) return; // Rule 1: setting must allow interaction.
             if (_currentMode != WindowDisplayMode.Overlay) return; // Rule 2: Only works in Overlay mode.
 
             // Toggle the state
@@ -373,27 +384,35 @@ namespace TransparentTwitchChatWPF
         #region Browser Events
         private async void webView_NavigationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
         {
-            this.webView.Dispatcher.Invoke(new Action(() => { SetZoomFactor(ZoomLevel); }));
+            if (_isClosing || webView?.CoreWebView2 == null || !ReferenceEquals(sender, webView)) return;
+            var currentView = webView;
+            try
+            {
+            SetZoomFactor(ZoomLevel);
 
             // Insert some custom CSS for webcaptioner.com domain
             if (this.Url.ToLower().Contains("webcaptioner.com"))
             {
-                await this.webView.ExecuteScriptAsync(InsertCustomCSS(CustomCSS_Defaults.WebCaptioner));
+                await currentView.ExecuteScriptAsync(InsertCustomCSS(CustomCSS_Defaults.WebCaptioner));
             }
 
             if (!string.IsNullOrEmpty(this.customCSS))
             {
-                await this.webView.ExecuteScriptAsync(InsertCustomCSS(this.customCSS));
+                await currentView.ExecuteScriptAsync(InsertCustomCSS(this.customCSS));
             }
 
             // Apply the initial overflow style after the page has loaded
-            await ApplyWebPageStyles();
+            if (!_isClosing && ReferenceEquals(currentView, webView)) await ApplyWebPageStyles();
+            }
+            catch (Exception ex) when (ex is ObjectDisposedException || ex is InvalidOperationException || ex is System.Runtime.InteropServices.COMException)
+            {
+                if (!_isClosing) Debug.WriteLine("Widget browser event: " + ex.GetType().Name);
+            }
         }
 
         private void webView_CoreWebView2ProcessFailed(object sender, CoreWebView2ProcessFailedEventArgs e)
         {
-            webViewProcessFailed = true;
-            this.Close();
+            if (!_isClosing) _ = RetryBrowserAsync();
         }
         #endregion
 
@@ -566,7 +585,7 @@ namespace TransparentTwitchChatWPF
 
         private void MenuItem_VisitWebsite(object sender, RoutedEventArgs e)
         {
-            ShellHelper.OpenUrl("https://github.com/baffler/Transparent-Twitch-Chat-Overlay/releases");
+            ShellHelper.OpenUrl(AppInfo.RepositoryUrl + "/releases/latest");
             e.Handled = true;
         }
 
@@ -637,8 +656,10 @@ namespace TransparentTwitchChatWPF
         #region Window Events
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (App.IsShuttingDown || webViewProcessFailed)
+            if (_isClosing || App.IsShuttingDown)
             {
+                _isClosing = true;
+                _lifetime.Cancel();
                 e.Cancel = false; // Allow the window to close normally
                 return;
             }
@@ -646,6 +667,8 @@ namespace TransparentTwitchChatWPF
             if (MessageBox.Show("This will delete the settings for this window. Are you sure?", "Remove Window", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
             {
                 this._mainWindow.RemoveCustomWindow(this.Url);
+                _isClosing = true;
+                _lifetime.Cancel();
 
                 // TODO: Remove the tracking configuration for this window
                 /*string path = (Services.Tracker.StoreFactory as Jot.Storage.JsonFileStoreFactory).StoreFolderPath;
@@ -692,8 +715,9 @@ namespace TransparentTwitchChatWPF
 
         public void SetTopMost(bool topMost)
         {
+            if (_isClosing) return;
             this.Topmost = topMost;
-            if (!topMost) return;
+            if (!topMost || !IsVisible) return;
 
             if (this.WindowState == WindowState.Minimized)
             {
@@ -707,17 +731,9 @@ namespace TransparentTwitchChatWPF
         #region Helpers
         private void UpdateTitle()
         {
-            var isInteractable = AllowInteraction && (_currentMode == WindowDisplayMode.Setup || _isOverlayInteractable);
-            if (isInteractable)
-            {
-                this.Title = $"{DisplayName} [Interactable]";
-                this.InteractableIcon.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                this.Title = DisplayName;
-                this.InteractableIcon.Visibility = Visibility.Collapsed;
-            }
+            this.Title = $"Twitch Chat Widget — {DisplayName} [{HashCode}]";
+            var interactable = AllowInteraction && (_currentMode == WindowDisplayMode.Setup || _isOverlayInteractable);
+            this.InteractableIcon.Visibility = interactable ? Visibility.Visible : Visibility.Collapsed;
         }
         private void MigrateSettings()
         {

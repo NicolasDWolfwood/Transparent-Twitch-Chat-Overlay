@@ -26,6 +26,13 @@ public partial class GeneralSettingsPage : UserControl
 
         this.cbAutoHideBorders.IsChecked = App.Settings.GeneralSettings.AutoHideBorders;
         this.cbAlwaysOnTop.IsChecked = App.Settings.GeneralSettings.AlwaysOnTop;
+        this.cbWidgetsOnly.IsChecked = App.Settings.GeneralSettings.WidgetsOnly;
+        this.cbReduceMotion.IsChecked = App.Settings.GeneralSettings.ReduceMotion;
+        this.chatUpdateInterval.SelectedValue = Math.Clamp(App.Settings.GeneralSettings.ChatUpdateIntervalMs, 100, 1000).ToString();
+        this.hotkeyInputToggleVisibility.Hotkey = App.Settings.GeneralSettings.ToggleVisibilityHotkey;
+        this.hotkeyInputShowOverlays.Hotkey = App.Settings.GeneralSettings.ShowOverlaysHotkey;
+        this.hotkeyInputHideOverlays.Hotkey = App.Settings.GeneralSettings.HideOverlaysHotkey;
+        this.hotkeyStatus.Text = string.Join(Environment.NewLine, HotkeyRegistration.Errors);
         this.cbEnableTrayIcon.IsChecked = true; //TODO: Temp fix for a bug ~ this.config.EnableTrayIcon;
         //this.cbConfirmClose.IsChecked = App.Settings.GeneralSettings.ConfirmClose;
         this.cbTaskbar.IsChecked = App.Settings.GeneralSettings.HideTaskbarIcon;
@@ -44,6 +51,13 @@ public partial class GeneralSettingsPage : UserControl
     {
         App.Settings.GeneralSettings.AutoHideBorders = this.cbAutoHideBorders.IsChecked ?? false;
         App.Settings.GeneralSettings.AlwaysOnTop = this.cbAlwaysOnTop.IsChecked ?? true;
+        App.Settings.GeneralSettings.WidgetsOnly = this.cbWidgetsOnly.IsChecked ?? false;
+        App.Settings.GeneralSettings.ReduceMotion = this.cbReduceMotion.IsChecked ?? false;
+        App.Settings.GeneralSettings.ChatUpdateIntervalMs = int.TryParse(this.chatUpdateInterval.SelectedValue?.ToString(), out int interval) ? interval : 200;
+        App.Settings.GeneralSettings.ToggleVisibilityHotkey = this.hotkeyInputToggleVisibility.Hotkey;
+        App.Settings.GeneralSettings.ShowOverlaysHotkey = this.hotkeyInputShowOverlays.Hotkey;
+        App.Settings.GeneralSettings.HideOverlaysHotkey = this.hotkeyInputHideOverlays.Hotkey;
+        foreach (var input in AllHotkeyInputs()) input.StopCapturing();
         App.Settings.GeneralSettings.EnableTrayIcon = this.cbEnableTrayIcon.IsChecked ?? false;
         //App.Settings.GeneralSettings.ConfirmClose     = this.cbConfirmClose.IsChecked ?? false;
         App.Settings.GeneralSettings.HideTaskbarIcon = this.cbTaskbar.IsChecked ?? false;
@@ -55,7 +69,7 @@ public partial class GeneralSettingsPage : UserControl
         App.Settings.GeneralSettings.ToggleInteractableHotkey = hotkeyInputToggleInteractable.Hotkey;
         App.Settings.GeneralSettings.BringToTopHotkey = hotkeyInputBringToTop.Hotkey;
 
-        App.Settings.GeneralSettings.DeviceID = (int)DevicesComboBox.SelectedValue;
+        App.Settings.GeneralSettings.DeviceID = DevicesComboBox.SelectedValue is int selectedDevice ? selectedDevice : -1;
         App.Settings.GeneralSettings.DeviceName = DevicesComboBox.Text;
 
         double ClampBetween0And1(double value)
@@ -70,19 +84,24 @@ public partial class GeneralSettingsPage : UserControl
 
     private void LoadDevices()
     {
+        DevicesComboBox.Items.Clear();
         DevicesComboBox.Items.Add(new { Id = -1, Name = "Default" });
 
-        for (int deviceId = 0; deviceId < WaveOut.DeviceCount; deviceId++)
+        try
         {
-            var capabilities = WaveOut.GetCapabilities(deviceId);
-            DevicesComboBox.Items.Add(new { Id = deviceId, Name = capabilities.ProductName });
+            for (int deviceId = 0; deviceId < WaveOut.DeviceCount; deviceId++)
+            {
+                var capabilities = WaveOut.GetCapabilities(deviceId);
+                DevicesComboBox.Items.Add(new { Id = deviceId, Name = capabilities.ProductName });
+            }
         }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine("Audio device enumeration: " + ex.GetType().Name); }
 
         DevicesComboBox.DisplayMemberPath = "Name";
         DevicesComboBox.SelectedValuePath = "Id";
 
         DevicesComboBox.SelectedValue = App.Settings.GeneralSettings.DeviceID;
-        if (!DevicesComboBox.Text.StartsWith(App.Settings.GeneralSettings.DeviceName))
+        if (DevicesComboBox.SelectedValue == null || string.IsNullOrEmpty(App.Settings.GeneralSettings.DeviceName) || !DevicesComboBox.Text.StartsWith(App.Settings.GeneralSettings.DeviceName))
         {
             DevicesComboBox.SelectedValue = -1;
         }
@@ -186,5 +205,28 @@ public partial class GeneralSettingsPage : UserControl
     private void btnCheckForUpdatesNow_Click(object sender, RoutedEventArgs e)
     {
         CheckForUpdateRequested?.Invoke();
+    }
+
+    private HotkeyEditorControl[] AllHotkeyInputs() => new[] { hotkeyInputToggleBorders, hotkeyInputToggleInteractable, hotkeyInputBringToTop,
+        hotkeyInputToggleVisibility, hotkeyInputShowOverlays, hotkeyInputHideOverlays };
+
+    public bool ValidateHotkeys()
+    {
+        var errors = HotkeyRegistration.FindDuplicates(new[] {
+            ("Toggle borders", hotkeyInputToggleBorders.Hotkey), ("Toggle interaction", hotkeyInputToggleInteractable.Hotkey),
+            ("Bring to top", hotkeyInputBringToTop.Hotkey), ("Toggle visibility", hotkeyInputToggleVisibility.Hotkey),
+            ("Show overlays", hotkeyInputShowOverlays.Hotkey), ("Hide overlays", hotkeyInputHideOverlays.Hotkey) });
+        hotkeyStatus.Text = string.Join(Environment.NewLine, errors);
+        return errors.Count == 0;
+    }
+
+    private void CaptureVisibilityHotkey_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is string name && FindName(name) is HotkeyEditorControl target)
+        {
+            bool stop = target.IsCapturing;
+            foreach (var input in AllHotkeyInputs()) input.StopCapturing();
+            if (!stop) target.StartCapturing();
+        }
     }
 }

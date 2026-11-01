@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Windows;
@@ -122,6 +122,7 @@ namespace TransparentTwitchChatWPF
                 // Let the main window process its own startup arguments
                 mainWindow.ProcessCommandLineArgs(e.Args);
                 mainWindow.Show();
+                mainWindow.ApplyOverlayVisibility();
             }
             catch (Exception ex) {
                 var msg = "An exception occurred On Startup. Note you can click on this message box to focus it, then press Ctrl-C to copy the entire message.\n\n" + ex.Message.ToString();

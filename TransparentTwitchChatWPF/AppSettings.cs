@@ -218,6 +218,14 @@ public class GeneralSettings
     public byte OpacityLevel { get; set; } = 0;
     public bool AutoHideBorders { get; set; } = false;
     public bool AlwaysOnTop { get; set; } = true;
+    public bool MainBordersHidden { get; set; } = false;
+    public bool WidgetsOnly { get; set; } = false;
+    public bool OverlaysHidden { get; set; } = false;
+    public bool ReduceMotion { get; set; } = false;
+    public int ChatUpdateIntervalMs { get; set; } = 200;
+    public Hotkey ToggleVisibilityHotkey { get; set; } = new Hotkey(Key.F10, ModifierKeys.Control | ModifierKeys.Alt);
+    public Hotkey ShowOverlaysHotkey { get; set; }
+    public Hotkey HideOverlaysHotkey { get; set; }
     public bool EnableTrayIcon { get; set; } = true;
     public bool ConfirmClose { get; set; } = true;
     public bool HideTaskbarIcon { get; set; } = false;

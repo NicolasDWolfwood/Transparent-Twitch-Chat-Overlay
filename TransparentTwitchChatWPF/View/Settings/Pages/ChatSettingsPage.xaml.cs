@@ -14,6 +14,7 @@ namespace TransparentTwitchChatWPF.View.Settings;
 /// </summary>
 public partial class ChatSettingsPage : UserControl
 {
+    private readonly AudioPlaybackService _previewPlayer = new();
     public event Action TwitchConnectionPageRequested;
     public event Action AppearancePageRequested;
     public event Action RestoreNativeChatDefaultsRequested;
@@ -21,6 +22,7 @@ public partial class ChatSettingsPage : UserControl
     public ChatSettingsPage()
     {
         InitializeComponent();
+        Unloaded += (_, _) => _previewPlayer.Dispose();
 
         tbPopoutCSS.SyntaxHighlighting = ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance.GetDefinition("CSS");
         tbCSS2.SyntaxHighlighting = ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance.GetDefinition("CSS");
@@ -289,23 +291,9 @@ public partial class ChatSettingsPage : UserControl
 
     private void PlayAudioFile(string file)
     {
-        if (File.Exists(file))
-        {
-            var audioFileReader = new AudioFileReader(file);
-            {
-                audioFileReader.Volume = App.Settings.GeneralSettings.OutputVolume;
-                var waveOutDevice = new WaveOutEvent();
-                {
-                    waveOutDevice.Init(audioFileReader);
-                    waveOutDevice.PlaybackStopped += (s, e) =>
-                    {
-                        audioFileReader.Dispose();
-                        waveOutDevice.Dispose();
-                    };
-                    waveOutDevice.Play();
-                }
-            }
-        }
+        var settings = App.Settings.GeneralSettings;
+        if (!_previewPlayer.TryPlay(file, settings.OutputVolume, settings.DeviceID, settings.DeviceName))
+            Growl.Warning(_previewPlayer.LastError);
     }
 
     public void ChatTypeChanged(ChatTypes chatType)

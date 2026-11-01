@@ -180,6 +180,7 @@ public partial class MainWindow : Window, BrowserWindow
     {
         InitializeComponent();
         this.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
+        Title = CaptureTitle;
         DataContext = this;
 
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -196,8 +197,8 @@ public partial class MainWindow : Window, BrowserWindow
         App.Settings.Tracker.Configure<MainWindow>()
             .Id(w => w.GetType().Name + "_State", null, false)
             .Properties(w => new { w.Top, w.Width, w.Height, w.Left, w.WindowState })
-            .PersistOn(nameof(Window.Closing))
-            .StopTrackingOn(nameof(Window.Closing));
+            .PersistOn(nameof(Window.Closed))
+            .StopTrackingOn(nameof(Window.Closed));
         App.Settings.Tracker.Track(this);
 
         _timerTick = 0;
@@ -233,69 +234,20 @@ public partial class MainWindow : Window, BrowserWindow
 
     private void SetupOrReplaceHotkeys()
     {
-        HotkeyManager.Current.Remove("ToggleBorders");
-        HotkeyManager.Current.Remove("ToggleInteraction");
-        HotkeyManager.Current.Remove("BringToTopTimer");
-
-        menuItemToggleBorders.Header = "Toggle Borders";
-        menuItemToggleInteractable.Header = "Toggle Interactable";
-        menuItemBringToTop.Header = "Bring to Top";
-
-        if (App.Settings.GeneralSettings.ToggleBordersHotkey != null)
-        {
-            if (App.Settings.GeneralSettings.ToggleBordersHotkey.Key != Key.None)
-            {
-                try
-                {
-                    HotkeyManager.Current.AddOrReplace(
-                        "ToggleBorders",
-                        App.Settings.GeneralSettings.ToggleBordersHotkey.Key,
-                        App.Settings.GeneralSettings.ToggleBordersHotkey.Modifiers,
-                        OnHotKeyToggleBorders);
-
-                    menuItemToggleBorders.Header = $"Toggle Borders ({App.Settings.GeneralSettings.ToggleBordersHotkey.ToString()})";
-                }
-                catch (Exception)
-                { }
-            }
-        }
-
-        if (App.Settings.GeneralSettings.ToggleInteractableHotkey != null)
-        {
-            if (App.Settings.GeneralSettings.ToggleInteractableHotkey.Key != Key.None)
-            {
-                try
-                {
-                    HotkeyManager.Current.AddOrReplace(
-                        "ToggleInteraction",
-                        App.Settings.GeneralSettings.ToggleInteractableHotkey.Key,
-                        App.Settings.GeneralSettings.ToggleInteractableHotkey.Modifiers,
-                        OnHotKeyToggleInteraction);
-
-                    menuItemToggleInteractable.Header = $"Toggle Interactable ({App.Settings.GeneralSettings.ToggleInteractableHotkey.ToString()})";
-                }
-                catch (Exception)
-                { }
-            }
-        }
-
-        if (App.Settings.GeneralSettings.BringToTopHotkey != null)
-        {
-            if (App.Settings.GeneralSettings.BringToTopHotkey.Key != Key.None)
-            {
-                try
-                {
-                    HotkeyManager.Current.AddOrReplace(
-                        "BringToTopTimer",
-                        App.Settings.GeneralSettings.BringToTopHotkey.Key,
-                        App.Settings.GeneralSettings.BringToTopHotkey.Modifiers,
-                        OnHotKeyBringToTopTimer);
-                    menuItemBringToTop.Header = $"Bring to Top ({App.Settings.GeneralSettings.BringToTopHotkey.ToString()})";
-                }
-                catch (Exception)
-                { }
-            }
-        }
+        foreach (string name in new[] { "ToggleBorders", "ToggleInteraction", "BringToTopTimer", "ToggleVisibility", "ShowOverlays", "HideOverlays" })
+            HotkeyManager.Current.Remove(name);
+        HotkeyRegistration.Errors.Clear();
+        var settings = App.Settings.GeneralSettings;
+        RegisterShortcut("ToggleBorders", settings.ToggleBordersHotkey, OnHotKeyToggleBorders);
+        RegisterShortcut("ToggleInteraction", settings.ToggleInteractableHotkey, OnHotKeyToggleInteraction);
+        RegisterShortcut("BringToTopTimer", settings.BringToTopHotkey, OnHotKeyBringToTopTimer);
+        RegisterShortcut("ToggleVisibility", settings.ToggleVisibilityHotkey, ToggleOverlayVisibility);
+        RegisterShortcut("ShowOverlays", settings.ShowOverlaysHotkey, ShowOverlays);
+        RegisterShortcut("HideOverlays", settings.HideOverlaysHotkey, HideOverlays);
+        menuItemToggleBorders.Header = $"Toggle Borders ({settings.ToggleBordersHotkey})";
+        menuItemToggleInteractable.Header = $"Toggle Interactable ({settings.ToggleInteractableHotkey})";
+        menuItemBringToTop.Header = $"Bring to Top ({settings.BringToTopHotkey})";
+        ShowOperationStatus(string.Join(Environment.NewLine, HotkeyRegistration.Errors));
     }
 
     private void OnHotKeyToggleInteraction(object sender, HotkeyEventArgs e)
@@ -313,7 +265,7 @@ public partial class MainWindow : Window, BrowserWindow
 
     private void SetInteractableAllWindows(bool isInteractable)
     {
-        foreach (var window in this.windows)
+        foreach (var window in this.windows.ToArray())
         {
             window.SetInteractable(isInteractable);
         }
@@ -428,7 +380,7 @@ public partial class MainWindow : Window, BrowserWindow
         // Make sure the placeholder overlay is hidden
         PlaceholderOverlay.Visibility = Visibility.Collapsed;
 
-        await SetupWebViewAsync();
+        await RetryBrowserAsync();
     }
 
     private async Task SetupWebViewAsync()
@@ -458,7 +410,10 @@ public partial class MainWindow : Window, BrowserWindow
         this.mainWindowGrid.Children.Add(webView);
 
         // Initialize and subscribe to events.
+        _lifetime.Token.ThrowIfCancellationRequested();
         await webView.EnsureCoreWebView2Async(cwv2Environment);
+        _lifetime.Token.ThrowIfCancellationRequested();
+        await BrowserPerformance.ApplyAsync(webView, App.Settings.GeneralSettings.ReduceMotion, 0, App.Settings.GeneralSettings.ChatUpdateIntervalMs);
 
         webView.CoreWebView2InitializationCompleted += webView_CoreWebView2InitializationCompleted;
         webView.NavigationCompleted += webView_NavigationCompleted;
@@ -474,7 +429,7 @@ public partial class MainWindow : Window, BrowserWindow
 
         // Set Opacity, Zoom, sound, and load any custom windows.
         InitializeWindowProperties();
-
+        RestoreDisplayState();
         SetupChatProvider();
     }
 
@@ -496,34 +451,7 @@ public partial class MainWindow : Window, BrowserWindow
 
     private async void webView_CoreWebView2ProcessFailed(object sender, CoreWebView2ProcessFailedEventArgs e)
     {
-        Debug.WriteLine($"WebView2 process failed: {e.ProcessFailedKind}, Reason: {e.Reason}");
-
-        // It's safest to perform UI updates and re-initialization on the UI thread.
-        await Dispatcher.InvokeAsync(async () =>
-        {
-            MessageBox.Show($"The web component crashed and will now be reloaded.\n'{e.ProcessFailedKind}' Reason: '{e.Reason}'", "WebView2 Error", MessageBoxButton.OK, MessageBoxImage.Error);
-
-            // --- Clean up the FAILED instance ---
-            // Remove the control from the visual tree.
-            this.mainWindowGrid.Children.Remove(webView);
-
-            // Dispose of it to release resources.
-            webView.Dispose();
-            webView = null;
-
-            // --- Re-create a NEW instance ---
-            try
-            {
-                // This method should now create a new WebView2, subscribe its events,
-                // and add it to the grid. And re-open the widgets.
-                await SetupWebViewAsync();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Fatal error: Could not recover the WebView2 component. {ex.Message} The application will now close.", "Recovery Failed", MessageBoxButton.OK, MessageBoxImage.Stop);
-                Application.Current.Shutdown();
-            }
-        });
+        if (!_isClosing) await RetryBrowserAsync();
     }
 
     private void webView_CoreWebView2InitializationCompleted(object sender, CoreWebView2InitializationCompletedEventArgs e)
@@ -548,7 +476,7 @@ public partial class MainWindow : Window, BrowserWindow
     private void StartCheckForegroundWindowTimer()
     {
         _timerCheckForegroundFocus.Stop();
-        if (!App.Settings.GeneralSettings.AlwaysOnTop) return;
+        if (_isClosing || App.Settings.GeneralSettings.OverlaysHidden || !App.Settings.GeneralSettings.AlwaysOnTop) return;
 
         _timerTick = 0;
         _timerCheckForegroundFocus.Start();
@@ -556,12 +484,12 @@ public partial class MainWindow : Window, BrowserWindow
 
     private void CheckForegroundWindow()
     {
-        if (!App.Settings.GeneralSettings.AlwaysOnTop) return;
+        if (_isClosing || App.Settings.GeneralSettings.OverlaysHidden || !App.Settings.GeneralSettings.AlwaysOnTop) return;
 
         IntPtr foregroundWindow = GetForegroundWindow();
         var hwnd = new WindowInteropHelper(this).Handle;
 
-        foreach (BrowserWindow win in this.windows)
+        foreach (BrowserWindow win in this.windows.ToArray())
             win.SetTopMost(true);
 
         if (foregroundWindow != hwnd)
@@ -572,7 +500,7 @@ public partial class MainWindow : Window, BrowserWindow
     {
         // Check if the command is our special "show window" command
         if (args.Length > 0 && args[0] == IpcManager.ShowWindowCommand) {
-            Title = "[MainWindow]";
+            SetOverlaysHidden(false);
             CheckForegroundWindow();
             return;
         }
@@ -602,6 +530,7 @@ public partial class MainWindow : Window, BrowserWindow
 
     public void SetInteractable(bool interactable)
     {
+        if (_isClosing || webView == null) return;
         this.Dispatcher.Invoke(() =>
         {
             this.webView.Focusable = interactable;
@@ -659,6 +588,7 @@ public partial class MainWindow : Window, BrowserWindow
         this.ResizeMode = ResizeMode.CanResizeWithGrip;
 
         _hiddenBorders = false;
+        App.Settings.GeneralSettings.MainBordersHidden = false;
 
         if (App.Settings.GeneralSettings.AlwaysOnTop)
         {
@@ -694,6 +624,7 @@ public partial class MainWindow : Window, BrowserWindow
         this.Background = Brushes.Transparent;
 
         _hiddenBorders = true;
+        App.Settings.GeneralSettings.MainBordersHidden = true;
 
         if (App.Settings.GeneralSettings.AlwaysOnTop)
         {
@@ -707,7 +638,7 @@ public partial class MainWindow : Window, BrowserWindow
 
     public void ToggleBorderVisibility()
     {
-        if (!hasWebView2Runtime) return;
+        if (_isClosing || webView == null) return;
 
         if (_hiddenBorders)
             DrawBordersForAllWindows();
@@ -718,21 +649,21 @@ public partial class MainWindow : Window, BrowserWindow
     public void DrawBordersForAllWindows()
     {
         drawBorders();
-        foreach (BrowserWindow win in this.windows)
+        foreach (BrowserWindow win in this.windows.ToArray())
             win.drawBorders();
     }
 
     public void HideBordersForAllWindows()
     {
         hideBorders();
-        foreach (BrowserWindow win in this.windows)
+        foreach (BrowserWindow win in this.windows.ToArray())
             win.hideBorders();
     }
 
     public void ResetWindowPosition()
     {
         this.ResetWindowState();
-        foreach (BrowserWindow win in this.windows)
+        foreach (BrowserWindow win in this.windows.ToArray())
             win.ResetWindowState();
     }
 
@@ -811,7 +742,9 @@ public partial class MainWindow : Window, BrowserWindow
 
     public void ExitApplication()
     {
+        if (_isClosing) return;
         App.IsShuttingDown = true;
+        _timerCheckForegroundFocus?.Stop();
         Application.Current.Shutdown();
 
         // Removing the 'are you sure' for now
@@ -838,7 +771,7 @@ public partial class MainWindow : Window, BrowserWindow
     {
         if (!hasWebView2Runtime) return;
 
-        foreach (BrowserWindow window in this.windows)
+        foreach (BrowserWindow window in this.windows.ToArray())
         {
             if (window != null)
             {
@@ -853,7 +786,6 @@ public partial class MainWindow : Window, BrowserWindow
 
     private void MenuItem_ShowSettings(object sender, RoutedEventArgs e)
     {
-        if (!hasWebView2Runtime) return;
         ShowSettingsWindow();
     }
 
@@ -919,6 +851,9 @@ public partial class MainWindow : Window, BrowserWindow
 
     private async void webView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
     {
+        if (_isClosing || webView?.CoreWebView2 == null || !ReferenceEquals(sender, webView)) return;
+        try
+        {
         if (!e.IsSuccess)
         {
             Console.WriteLine("webView_NavigationCompleted: (Unsuccessful) " + e.WebErrorStatus.ToString());
@@ -965,6 +900,12 @@ public partial class MainWindow : Window, BrowserWindow
         this.webView.Dispatcher.Invoke(() => SetZoomFactor(App.Settings.GeneralSettings.ZoomLevel));
         // Configuration for the current chat type
         await _webViewConfigurator.ConfigureAsync(webView.CoreWebView2);
+
+        }
+        catch (Exception ex) when (ex is ObjectDisposedException || ex is InvalidOperationException || ex is System.Runtime.InteropServices.COMException)
+        {
+            if (!_isClosing) System.Diagnostics.Debug.WriteLine("Browser event: " + ex.GetType().Name);
+        }
     }
 
     private void RestoreNativeChatFiles()
@@ -993,6 +934,7 @@ public partial class MainWindow : Window, BrowserWindow
 
     private async void webView_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
+        if (_isClosing || !ReferenceEquals(sender, webView)) return;
         if (App.Settings.GeneralSettings.ChatType == (int)ChatTypes.TwitchPopout)
         {
             try
@@ -1035,6 +977,23 @@ public partial class MainWindow : Window, BrowserWindow
                     root.TryGetProperty("type", out JsonElement typeElement))
                 {
                     string type = typeElement.GetString() ?? string.Empty;
+                    if (type == "NativeChatConnection")
+                    {
+                        if (!e.Source.StartsWith("https://nativechat.overlay/", StringComparison.OrdinalIgnoreCase)) return;
+                        string state = root.TryGetProperty("state", out var stateValue) ? stateValue.GetString() : "";
+                        ConnectionStatusText.Text = state switch {
+                            "loading" => "Preparing chat…",
+                            "invalid-channel" => "Set your Twitch channel in Settings.",
+                            "connected" => "Chat connected",
+                            "connecting" => "Connecting chat…",
+                            "joining" => "Joining channel…",
+                            "reconnecting" => "Chat disconnected — retrying…",
+                            _ => "Chat disconnected"
+                        };
+                        ConnectionStatusPanel.Visibility = Visibility.Visible;
+                        ConnectionStatusText.Foreground = state == "connected" ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Orange;
+                        return;
+                    }
                     if (type == "NativeChatReady")
                     {
                         int protocolVersion = root.TryGetProperty("protocolVersion", out JsonElement protocolElement)
@@ -1060,7 +1019,7 @@ public partial class MainWindow : Window, BrowserWindow
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        this.Title = $"Chat Overlay for {config.Channel}";
+                        this.Title = CaptureTitle;
                     });
                 }
             }
@@ -1146,95 +1105,63 @@ public partial class MainWindow : Window, BrowserWindow
         return path;
     }
 
-    private void ShowSettingsWindow()
+    private async void ShowSettingsWindow()
     {
-        if (!hasWebView2Runtime)
-        {
-            if (
-            MessageBox.Show(
-                            "Please download and install the WebView2 Runtime to use this app.\nRestart this app after you install.",
-                            "WebView2 Runtime Required",
-                            MessageBoxButton.OK, MessageBoxImage.Error
-                            )
-                == MessageBoxResult.OK)
-            {
-                ShellHelper.OpenUrl("https://go.microsoft.com/fwlink/p/?LinkId=2124703");
-            }
-
-            return;
-        }
-
-        // Disable hotkeys while settings window is open
+        if (_isClosing) return;
         HotkeyManager.Current.IsEnabled = false;
-
-        var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
-
-        settingsWindow.CreateWidgetRequested += (window) => {
-            CreateNewWindowDialog(window);
-        };
-
-        settingsWindow.CheckForUpdateRequested += () => {
-            _ = CheckForUpdateAsync(notifyIfNoUpdate: true, settingsWindow);
-        };
-
-        settingsWindow.RestoreNativeChatDefaultsRequested += RestoreNativeChatFiles;
-
-        // Settings were saved
-        if (settingsWindow.ShowDialog() == true)
+        try
         {
+            var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
+            settingsWindow.CreateWidgetRequested += window => CreateNewWindowDialog(window);
+            settingsWindow.CheckForUpdateRequested += () => _ = CheckForUpdateAsync(true, settingsWindow);
+            settingsWindow.RestoreNativeChatDefaultsRequested += RestoreNativeChatFiles;
+            if (settingsWindow.ShowDialog() != true)
+            {
+                App.Settings.RevertChanges();
+                return;
+            }
+            if (_isClosing) return;
             ApplyAlwaysOnTopSetting();
-
-            if (Enum.IsDefined(typeof(ChatTypes), App.Settings.GeneralSettings.ChatType))
+            if (App.Settings.GeneralSettings.AutoHideBorders) HideBordersForAllWindows();
+            foreach (var widget in windows.OfType<CustomWindow>().ToArray())
+                await widget.ApplyPerformanceSettingsAsync();
+            if (webView?.CoreWebView2 != null)
             {
-                var chatType = (ChatTypes)App.Settings.GeneralSettings.ChatType;
-
+                await BrowserPerformance.ApplyAsync(webView, App.Settings.GeneralSettings.ReduceMotion, 0, App.Settings.GeneralSettings.ChatUpdateIntervalMs);
+                if (_isClosing) return;
                 SetupChatProvider();
-
-                /*
-                if (!App.Settings.GeneralSettings.RedemptionsEnabled)
-                                _twitchService.DisableEventSub(); 
-                if (App.Settings.GeneralSettings.ChatNotificationSound.ToLower() == "none")
-                    this.jsCallbackFunctions.MediaFile = string.Empty;
-                else
-                {
-                    string file = Path.Combine(GetSoundClipsFolder(), App.Settings.GeneralSettings.ChatNotificationSound);
-                    if (File.Exists(file))
-                    {
-                        this.jsCallbackFunctions.OnAudioDeviceChanged();
-                        this.jsCallbackFunctions.MediaFile = file;
-                    }
-                    else
-                    {
-                        this.jsCallbackFunctions.MediaFile = string.Empty;
-                    }
-                }*/
+                ReloadAudioSettings();
+                if (!_hiddenBorders) SetInteractable(App.Settings.GeneralSettings.AllowInteraction);
             }
-
-            this.taskbarControl.Visibility = Visibility.Visible;
-            this.ShowInTaskbar = !App.Settings.GeneralSettings.HideTaskbarIcon;
-
-            if (!this._hiddenBorders)
-            {
-                this.webView.Focusable = true;
-                if (App.Settings.GeneralSettings.AllowInteraction)
-                    SetInteractable(true);
-            }
-
+            taskbarControl.Visibility = Visibility.Visible;
+            ShowInTaskbar = !App.Settings.GeneralSettings.HideTaskbarIcon;
+            ApplyOverlayVisibility();
             SetupOrReplaceHotkeys();
-            HotkeyManager.Current.IsEnabled = true;
         }
-        else // Cancel changes and revert settings back
+        catch (Exception ex)
         {
-            App.Settings.RevertChanges();
-            HotkeyManager.Current.IsEnabled = true;
+            _logger.LogWarning(ex, "Could not apply overlay settings");
+            ShowOperationStatus("Some settings could not be applied. Retry the browser or reopen Settings.");
         }
+        finally { if (!_isClosing) HotkeyManager.Current.IsEnabled = true; }
+    }
+
+    private void ReloadAudioSettings()
+    {
+        if (jsCallbackFunctions == null) return;
+        string selected = App.Settings.GeneralSettings.ChatNotificationSound;
+        jsCallbackFunctions.OnAudioDeviceChanged();
+        jsCallbackFunctions.MediaFile = string.IsNullOrEmpty(selected) || selected.Equals("none", StringComparison.OrdinalIgnoreCase)
+            ? null : Path.Combine(GetSoundClipsFolder(), selected);
     }
 
     private void OpenNewCustomWindow(string URL, string displayName, string CustomCSS, bool allowInteraction)
     {
         CustomWindow newWindow = new CustomWindow(this, URL, displayName, CustomCSS, allowInteraction);
         windows.Add(newWindow);
+        newWindow.ShowActivated = false;
         newWindow.Show();
+        newWindow.ApplyGroupVisibility(App.Settings.GeneralSettings.OverlaysHidden);
     }
 
     public void RemoveCustomWindow(string url)
@@ -1242,19 +1169,20 @@ public partial class MainWindow : Window, BrowserWindow
         if (App.Settings.GeneralSettings.CustomWindows.Contains(url))
         {
             App.Settings.GeneralSettings.CustomWindows.Remove(url);
+            App.Settings.Persist();
         }
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
         Window window = (Window)sender;
-        window.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
+        if (!_isClosing) window.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
     }
 
     private void Window_PreviewLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         Window window = (Window)sender;
-        window.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
+        if (!_isClosing) window.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
     }
 
     private void btnSettings_Click(object sender, RoutedEventArgs e)
@@ -1409,16 +1337,12 @@ public partial class MainWindow : Window, BrowserWindow
         webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
         SetBackgroundOpacity(App.Settings.GeneralSettings.OpacityLevel);
 
-        // Setup Notification Sound
-        if (App.Settings.GeneralSettings.ChatNotificationSound.ToLower() != "none")
-        {
-            string file = Path.Combine(GetSoundClipsFolder(), App.Settings.GeneralSettings.ChatNotificationSound);
-            this.jsCallbackFunctions.MediaFile = File.Exists(file) ? file : string.Empty;
-        }
+        ReloadAudioSettings();
 
         // Open any custom windows
-        if (App.Settings.GeneralSettings.CustomWindows != null)
+        if (!_widgetsRestored && App.Settings.GeneralSettings.CustomWindows != null)
         {
+            _widgetsRestored = true;
             // Using default values for CustomWindows, but it will load them from the settings once opened
             foreach (string url in App.Settings.GeneralSettings.CustomWindows)
                 OpenNewCustomWindow(url, "", "", false);
@@ -1433,6 +1357,7 @@ public partial class MainWindow : Window, BrowserWindow
 
     private void SetupChatProvider()
     {
+        ConnectionStatusPanel.Visibility = Visibility.Collapsed;
         string localIndex = LocalHtmlHelper.GetIndexHtmlPath();
         bool success = false;
         try
@@ -1675,13 +1600,13 @@ public partial class MainWindow : Window, BrowserWindow
     {
         Growl.GrowlMessageRequested -= HandleGrowlMessage;
 
-        if (!App.IsShuttingDown)
+        if (!App.IsShuttingDown && !_isClosing)
             ExitApplication();
     }
 
     private void HandleGrowlMessage(string message)
     {
-        if (string.IsNullOrEmpty(message)) return;
+        if (_isClosing || string.IsNullOrEmpty(message)) return;
         if (!hasWebView2Runtime) return;
         if (_currentChat == null) return;
         if (this.webView == null) return;
@@ -1699,9 +1624,10 @@ public partial class MainWindow : Window, BrowserWindow
 
     public void ApplyAlwaysOnTopSetting()
     {
+        if (_isClosing) return;
         bool alwaysOnTop = App.Settings.GeneralSettings.AlwaysOnTop;
         this.Topmost = alwaysOnTop;
-        foreach (BrowserWindow window in this.windows)
+        foreach (BrowserWindow window in this.windows.ToArray())
             window.SetTopMost(alwaysOnTop);
 
         if (!alwaysOnTop)
@@ -1710,8 +1636,9 @@ public partial class MainWindow : Window, BrowserWindow
 
     public void SetTopMost(bool topMost)
     {
+        if (_isClosing) return;
         this.Topmost = topMost;
-        if (!topMost) return;
+        if (!topMost || !IsVisible) return;
 
         if (this.WindowState == WindowState.Minimized)
         {

@@ -460,18 +460,9 @@ Chat = {
   },
 
   load: function (callback) {
-    GetTwitchUserID(Chat.info.channel, credentials).done(function (res) {
-      let error = false;
-      if (res.error) {
-        console.log("Error getting user ID: " + res.error);
-        Chat.info.id = "1"
-        error = true;
-      }
-      if (res.data.length == 0) {
-        console.log("No user found");
-        Chat.info.id = "1"
-        error = true;
-      }
+    TTCOChatConnection.prepareMetadata(() => GetTwitchUserID(Chat.info.channel, credentials), function (res) {
+      const error = !res || !!res.error || !Array.isArray(res.data) || res.data.length === 0;
+      if (error) Chat.info.id = "1";
 
       if (!error) {
         console.log("User ID: " + res.data[0].id);
@@ -723,11 +714,10 @@ Chat = {
         }
       );
 
-      callback(true);
-    });
+    }, callback, { onError: () => console.warn('Optional appearance data could not load; continuing chat.') });
   },
 
-  update: setInterval(function () {
+  update: function () {
     if (Chat.info.lines.length > 0) {
       var lines = Chat.info.lines.join("");
 
@@ -812,7 +802,7 @@ Chat = {
         }
       }
     }
-  }, 200),
+  },
 
   getRandomColor: function (twitchColors, userId, nick) {
     let colorSeed = parseInt(userId);
@@ -1980,6 +1970,13 @@ Chat = {
   },
 
   connect: function (channel) {
+    channel = String(channel || '').trim().toLowerCase();
+    if (!/^[a-z0-9_]+$/.test(channel)) {
+      Chat.info.connected = false;
+      TTCOChatConnection.reportState({ state: 'invalid-channel' }, nativeChatHost);
+      return;
+    }
+    TTCOChatConnection.reportState({ state: 'loading' }, nativeChatHost);
     Chat.info.channel = channel;
     var title = $(document).prop("title");
     $(document).prop("title", title + Chat.info.channel);
@@ -1987,11 +1984,17 @@ Chat = {
     Chat.load(function () {
       SendInfoText("Starting Native Chat");
       console.log("Native Chat: Connecting to IRC server...");
-      var socket = new ReconnectingWebSocket(
+      if (Chat.connection) Chat.connection.close();
+      var socket = new TTCOChatConnection(
         "wss://irc-ws.chat.twitch.tv",
         "irc",
-        { reconnectInterval: 2000 }
+        { onState: state => {
+            Chat.info.connected = state.state === 'connected';
+            TTCOChatConnection.reportState(state, nativeChatHost);
+          } }
       );
+      Chat.connection = socket;
+      window.addEventListener('pagehide', () => socket.close(), { once: true });
 
       socket.onopen = function () {
         console.log("Native Chat: Connected");
@@ -2004,6 +2007,7 @@ Chat = {
       };
 
       socket.onclose = function () {
+        Chat.info.connected = false;
         console.log("Native Chat: Disconnected");
       };
 
@@ -2015,7 +2019,7 @@ Chat = {
 
           switch (message.command) {
             case "PING":
-              socket.send("PONG " + message.params[0]);
+              socket.send("PONG " + message.params[0] + "\r\n");
               return;
             case "JOIN":
               console.log("Native Chat: Joined channel #" + Chat.info.channel);
@@ -2023,6 +2027,7 @@ Chat = {
                 Chat.info.connected = true;
                 SendInfoText("Connected to " + Chat.info.channel);
               }
+              socket.markJoined();
               return;
             case "CLEARMSG":
               if (message.tags)
@@ -3069,3 +3074,17 @@ function getDirection(x, y) {
   if (y < 0 && Math.abs(y) >= Math.abs(x)) return 'up';
   return 'center'; // for (0,0) or very small values
 }
+
+// One display ticker, independent of the network heartbeat. Changing quality never pauses chat reception.
+let ttcoChatUpdateTimer;
+function configureChatUpdateInterval() {
+  clearInterval(ttcoChatUpdateTimer);
+  const requested = window.ttcoPerformance?.preferences?.updateIntervalMs || 200;
+  const interval = Math.max(100, Math.min(1000, Number(requested) || 200));
+  if (window.jQuery) window.jQuery.fx.off = !!window.ttcoPerformance?.preferences?.reducedMotion;
+  window.ttcoChatUpdateIntervalMs = interval;
+  ttcoChatUpdateTimer = setInterval(() => Chat.update(), interval);
+}
+window.addEventListener('ttco-performance', configureChatUpdateInterval);
+window.addEventListener('pagehide', () => clearInterval(ttcoChatUpdateTimer), { once: true });
+configureChatUpdateInterval();

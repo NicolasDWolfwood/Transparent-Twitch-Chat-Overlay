@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using TransparentTwitchChatWPF.Utils;
@@ -38,6 +38,7 @@ public partial class SettingsWindow : Window
         _generalSettingsPage = generalPage;
         _widgetSettingsPage = widgetPage;
         _aboutSettingsPage = aboutPage;
+        Closed += (_, _) => _appearanceSettingsPage.DisposeBrowser();
 
         _generalSettingsPage.CheckForUpdateRequested += () => {
             // When the GeneralSettingsPage requests a check for updates, fire this window's own event.
@@ -56,15 +57,25 @@ public partial class SettingsWindow : Window
 
     private async void OKButton_Click(object sender, RoutedEventArgs e)
     {
-        App.Settings.GeneralSettings.ChatType = this.comboChatType.SelectedIndex;
-
-        _generalSettingsPage.SaveValues();
-        _chatSettingsPage.SaveValues();
-        await _appearanceSettingsPage.SaveValues();
-
-        App.Settings.Persist();
-
-        DialogResult = true;
+        if (!OKButton.IsEnabled) return;
+        if (!_generalSettingsPage.ValidateHotkeys()) { lvSettings.SelectedIndex = 2; return; }
+        OKButton.IsEnabled = false;
+        try
+        {
+            App.Settings.GeneralSettings.ChatType = comboChatType.SelectedIndex;
+            _generalSettingsPage.SaveValues();
+            _chatSettingsPage.SaveValues();
+            await _appearanceSettingsPage.SaveValues();
+            if (!IsLoaded || !IsVisible) return;
+            App.Settings.Persist();
+            DialogResult = true;
+        }
+        catch (Exception ex)
+        {
+            SaveStatusText.Text = "Could not save settings. Check the settings folder and try again.";
+            Debug.WriteLine("Save settings: " + ex.GetType().Name);
+        }
+        finally { OKButton.IsEnabled = true; }
     }
 
     private void SetupValues()
@@ -91,7 +102,7 @@ public partial class SettingsWindow : Window
     private void ShowTwitchConnectionPage()
     {
         //SettingsContentControl.Content = _connectionSettingsPage;
-        lvSettings.SelectedIndex = 2;
+        lvSettings.SelectedIndex = 3;
     }
 
     private void ShowAppearancePage()

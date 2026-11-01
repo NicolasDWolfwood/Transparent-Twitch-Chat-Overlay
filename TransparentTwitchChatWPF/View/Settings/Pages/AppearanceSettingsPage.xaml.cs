@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualBasic.Logging;
+using Microsoft.VisualBasic.Logging;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using System;
@@ -41,7 +41,7 @@ public partial class AppearanceSettingsPage : UserControl
     private async void AppearanceSettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
         this.Loaded -= AppearanceSettingsPage_Loaded; // only run once
-        await SetupWebViewAsync();
+        await RetryBrowserAsync();
     }
 
     private async Task SetupWebViewAsync()
@@ -55,7 +55,9 @@ public partial class AppearanceSettingsPage : UserControl
         Grid.SetZIndex(webView, 0);
         this.mainGrid.Children.Add(webView);
 
+        _lifetime.Token.ThrowIfCancellationRequested();
         await webView.EnsureCoreWebView2Async(cwv2Environment);
+        _lifetime.Token.ThrowIfCancellationRequested();
 
         webView.CoreWebView2InitializationCompleted += webView_CoreWebView2InitializationCompleted;
         webView.NavigationCompleted += webView_NavigationCompleted;
@@ -169,6 +171,7 @@ public partial class AppearanceSettingsPage : UserControl
 
     private void webView_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
+        if (_closing || !ReferenceEquals(sender, webView)) return;
         if (App.Settings.GeneralSettings.ChatType == (int)ChatTypes.NativeChat)
         {
             string json = e.WebMessageAsJson;
@@ -183,43 +186,7 @@ public partial class AppearanceSettingsPage : UserControl
 
     private async void webView_CoreWebView2ProcessFailed(object sender, CoreWebView2ProcessFailedEventArgs e)
     {
-        // It's safest to perform UI updates and re-initialization on the UI thread.
-        await Dispatcher.InvokeAsync(async () =>
-        {
-            MessageBox.Show("The web component crashed and will be reloaded.", "WebView2 Error", MessageBoxButton.OK, MessageBoxImage.Error);
-
-            // --- Clean up old instance ---
-            if (webView != null)
-            {
-                // Unsubscribe from every event to prevent memory leaks
-                webView.CoreWebView2InitializationCompleted -= webView_CoreWebView2InitializationCompleted;
-                webView.NavigationCompleted -= webView_NavigationCompleted;
-                webView.WebMessageReceived -= webView_WebMessageReceived;
-
-                // The CoreWebView2 might be null if it failed very early
-                if (webView.CoreWebView2 != null)
-                {
-                    webView.CoreWebView2.NewWindowRequested -= webView_NewWindowRequested;
-                    webView.CoreWebView2.NavigationStarting -= webView_NavigationStarting;
-                    webView.CoreWebView2.ProcessFailed -= webView_CoreWebView2ProcessFailed;
-                }
-
-                // Remove the failed control from the UI and dispose it
-                this.mainGrid.Children.Remove(webView);
-                webView.Dispose();
-                webView = null;
-            }
-
-            // --- Re-create using the helper function ---
-            try
-            {
-                await SetupWebViewAsync();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Fatal error: Could not recover the WebView2 component. {ex.Message}", "Recovery Failed", MessageBoxButton.OK, MessageBoxImage.Stop);
-            }
-        });
+        if (!_closing) await RetryBrowserAsync();
     }
 
     private void webView_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
