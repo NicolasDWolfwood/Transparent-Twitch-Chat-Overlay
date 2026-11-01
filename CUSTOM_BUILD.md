@@ -1,6 +1,6 @@
 # Stream reliability preview
 
-Version 1.1.9-preview.1 implements the ten stream reliability improvements on top
+Version 1.1.9-preview.2 implements the ten stream reliability improvements on top
 of this fork's v1.1.8. The original application is by Baffler; this is an independent fork.
 
 ## OBS and OVR Toolkit
@@ -40,12 +40,12 @@ Sites that deliberately stop work while unfocused may need site-specific changes
 Use .NET SDK 8 and Node.js 24/npm on Windows:
 
 ```powershell
-powershell -NoProfile -File .\publish.ps1 -Version 1.1.9-preview.1
+powershell -NoProfile -File .\publish.ps1 -Version 1.1.9-preview.2
 ```
 
 The script runs Node tests, builds NativeChat, publishes a self-contained Windows
 x64 app, runs real WPF/WebView2 checks, and packages installer/portable/update
-assets and SHA-256 checksums in artifacts/packages-1.1.9-preview.1. The portable
+assets and SHA-256 checksums in artifacts/packages-1.1.9-preview.2. The portable
 ZIP must be fully extracted. Its profile stays with the portable installation;
 installer packages use the separate TransparentTwitchChatAlwaysOnTop app ID.
 Automatic update checks default to off and point at this fork.

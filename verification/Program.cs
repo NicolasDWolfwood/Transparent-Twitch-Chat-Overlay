@@ -56,6 +56,14 @@ internal static partial class Program
             services.AddSingleton<WebViewConfigurator>();
             services.AddSingleton<NativeChatFileManager>();
             services.AddSingleton<MainWindow>();
+            services.AddSingleton<ITwitchAuthService, TwitchAuthService>();
+            services.AddTransient<ConnectionSettingsPage>();
+            services.AddTransient<ChatSettingsPage>();
+            services.AddTransient<AppearanceSettingsPage>();
+            services.AddTransient<GeneralSettingsPage>();
+            services.AddTransient<WidgetSettingsPage>();
+            services.AddTransient<AboutSettingsPage>();
+            services.AddTransient<SettingsWindow>();
             using var provider = services.BuildServiceProvider();
             var main = provider.GetRequiredService<MainWindow>();
             main.ShowActivated = false;
@@ -138,6 +146,7 @@ internal static partial class Program
             Check(new GeneralSettings().AlwaysOnTop, "older settings without the property retain original default");
 
             CheckReliability(main, widget, page);
+            CheckSettingsDialog(provider);
 
             App.IsShuttingDown = true;
             widget.Close();

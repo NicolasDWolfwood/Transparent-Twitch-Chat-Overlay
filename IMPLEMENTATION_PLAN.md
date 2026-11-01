@@ -1,7 +1,7 @@
 # Stream reliability implementation
 
 Baseline: v1.1.8 (`57fced5`). Branch: `improvements/stream-reliability`.
-Delivery: Windows x64 v1.1.9-preview.1, for OBS/OVR Toolkit acceptance.
+Delivery: Windows x64 v1.1.9-preview.2, for OBS/OVR Toolkit acceptance.
 
 All ten implementation items are complete:
 
@@ -20,7 +20,7 @@ All ten implementation items are complete:
 
 ## Local verification
 
-- 61 WPF/WebView2/native-window checks passed, including all 24 v1.1.8 checks.
+- 76 WPF/WebView2/native-window checks passed, including all 24 v1.1.8 checks.
 - 18 deterministic Node checks cover heartbeat/reconnect/startup, status badge,
   fair animation delivery, cancellation and reversible motion settings.
 - Two-widget measurement, requested 1.2-second intervals: unlimited 226/226
@@ -46,3 +46,12 @@ Some capture methods cannot capture hidden windows; use widgets-only only when
 the main chat is not a capture target. Offline chat history is not replayed.
 Animation caps do not limit video, GIFs or OVR capture FPS. v1.1.8 remains stable
 while this preview is evaluated.
+
+## Settings regression correction
+
+The complete Settings dialog failed to construct because its About page passed
+a string from x:Static into a Uri-valued NavigateUri property. WPF does not apply
+the literal-string URI converter to the markup-extension result. A typed
+AppInfo.RepositoryUri property fixes this. The full dialog was not covered by the
+original 61 checks; preview.2 adds real modal open, page navigation, close/reopen,
+hyperlink type validation and Save checks. The expanded suite passes 76 checks.

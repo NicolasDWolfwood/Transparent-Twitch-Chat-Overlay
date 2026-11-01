@@ -3,6 +3,9 @@ using System.Reflection;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Controls;
+using System.Windows.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using TransparentTwitchChatWPF;
@@ -11,6 +14,47 @@ using TransparentTwitchChatWPF.View.Settings;
 
 internal static partial class Program
 {
+    private static void CheckSettingsDialog(IServiceProvider provider)
+    {
+        for (int pass = 0; pass < 2; pass++)
+        {
+            var dialog = provider.GetRequiredService<SettingsWindow>();
+            dialog.ShowActivated = false; dialog.Opacity = 0;
+            dialog.WindowStartupLocation = WindowStartupLocation.Manual; dialog.Left = -10000;
+            Exception failure = null;
+            int currentPass = pass;
+            dialog.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+            {
+                try
+                {
+                    Check(dialog.IsVisible, currentPass == 0 ? "complete Settings dialog opens" : "Settings dialog reopens after closing");
+                    var navigation = (ListView)dialog.FindName("lvSettings");
+                    var content = (ContentControl)dialog.FindName("SettingsContentControl");
+                    // Appearance is disabled for the blank custom URL used by this isolated runner.
+                    foreach (int index in new[] { 0, 2, 3, 4, 5 })
+                    {
+                        navigation.SelectedIndex = index;
+                        Type expected = index switch { 0 => typeof(ChatSettingsPage), 2 => typeof(GeneralSettingsPage),
+                            3 => typeof(ConnectionSettingsPage), 4 => typeof(WidgetSettingsPage), _ => typeof(AboutSettingsPage) };
+                        Check(content.Content?.GetType() == expected, $"Settings navigation opens {expected.Name}");
+                    }
+                    var about = (AboutSettingsPage)content.Content;
+                    var link = (ModernWpf.Controls.HyperlinkButton)about.FindName("RepositoryLink");
+                    Check(link.NavigateUri is Uri uri && uri.IsAbsoluteUri && uri.AbsoluteUri == AppInfo.RepositoryUrl,
+                        "About repository hyperlink is a typed absolute URI");
+                    if (currentPass == 0) dialog.Close();
+                    else
+                    {
+                        Invoke(dialog, "OKButton_Click", dialog.FindName("OKButton"), new RoutedEventArgs());
+                        Check(!dialog.IsVisible && dialog.DialogResult == true, "Save closes Settings successfully");
+                    }
+                }
+                catch (Exception ex) { failure = ex; dialog.Close(); }
+            }));
+            dialog.ShowDialog();
+            if (failure != null) throw new InvalidOperationException("Full Settings dialog regression", failure);
+        }
+    }
     [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr handle, int id, uint modifiers, uint key);
     [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]

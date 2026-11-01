@@ -1,3 +1,18 @@
+Fixes Settings failing to open in previous fork builds. The About page now supplies
+a typed URI for its repository hyperlink, preventing a XAML construction error
+that blocked the entire Settings dialog.
+
+Validated locally with **76 Windows integration checks and 18 JavaScript tests**.
+New regression coverage opens the complete modal Settings dialog, navigates its
+pages, closes and reopens it, checks the About link, and saves successfully.
+
+This preview replaces v1.1.9-preview.1. Fully extract the portable ZIP or use the
+Windows installer. Existing settings remain compatible.
+
+---
+
+Included stream reliability improvements:
+
 Ten stream reliability improvements on top of v1.1.8:
 
 1. NativeChat connection status, heartbeat checks, bounded reconnect delays and a metadata startup watchdog.

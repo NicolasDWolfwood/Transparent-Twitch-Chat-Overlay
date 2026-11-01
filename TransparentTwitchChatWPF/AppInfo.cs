@@ -6,6 +6,7 @@ namespace TransparentTwitchChatWPF;
 public static class AppInfo
 {
     public const string RepositoryUrl = "https://github.com/NicolasDWolfwood/Transparent-Twitch-Chat-Overlay";
+    public static Uri RepositoryUri { get; } = new(RepositoryUrl, UriKind.Absolute);
 
     public static string Version { 
         get 
