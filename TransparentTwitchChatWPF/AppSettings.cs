@@ -1,4 +1,4 @@
-﻿using Jot;
+using Jot;
 using Jot.Storage;
 using System.Collections.Specialized;
 using System.Diagnostics;
@@ -217,6 +217,7 @@ public class GeneralSettings
     public double ZoomLevel { get; set; } = 1;
     public byte OpacityLevel { get; set; } = 0;
     public bool AutoHideBorders { get; set; } = false;
+    public bool AlwaysOnTop { get; set; } = true;
     public bool EnableTrayIcon { get; set; } = true;
     public bool ConfirmClose { get; set; } = true;
     public bool HideTaskbarIcon { get; set; } = false;
@@ -236,7 +237,8 @@ public class GeneralSettings
     public bool BetterTtv_AdvEmoteMenu { get; set; } = true;
     public bool FrankerFaceZ { get; set; } = true;
     public string jChatURL { get; set; } = string.Empty;
-    public bool CheckForUpdates { get; set; } = true;
+    // Update checks are opt-in for this fork; the updater follows AppInfo.RepositoryUrl.
+    public bool CheckForUpdates { get; set; } = false;
     public DateTime LastUpdateCheck { get; set; } = DateTime.MinValue;
     public Color ChatHighlightColor { get; set; } = Color.FromArgb(150, 245, 245, 0); // Yellow
     public Color ChatHighlightModsColor { get; set; } = Color.FromArgb(150, 0, 173, 3); // Green

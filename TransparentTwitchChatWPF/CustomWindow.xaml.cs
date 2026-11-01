@@ -1,4 +1,4 @@
-﻿using Jot;
+using Jot;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
@@ -65,6 +65,7 @@ namespace TransparentTwitchChatWPF
             AllowInteraction = allowInteraction;
 
             InitializeComponent();
+            this.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
 
             HashCode = Hasher.Create64BitHash(URL);
             
@@ -691,6 +692,9 @@ namespace TransparentTwitchChatWPF
 
         public void SetTopMost(bool topMost)
         {
+            this.Topmost = topMost;
+            if (!topMost) return;
+
             if (this.WindowState == WindowState.Minimized)
             {
                 this.WindowState = WindowState.Normal;

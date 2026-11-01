@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using TransparentTwitchChatWPF.Helpers;
@@ -179,6 +179,7 @@ public partial class MainWindow : Window, BrowserWindow
         NativeChatFileManager nativeChatFileManager)
     {
         InitializeComponent();
+        this.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
         DataContext = this;
 
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -203,7 +204,7 @@ public partial class MainWindow : Window, BrowserWindow
         _timerCheckForegroundFocus = new DispatcherTimer();
         _timerCheckForegroundFocus.Interval = TimeSpan.FromSeconds(1);
         _timerCheckForegroundFocus.Tick += _timer_Tick;
-        _timerCheckForegroundFocus.Start();
+        StartCheckForegroundWindowTimer();
 
         SetupOrReplaceHotkeys();
         //SettingsWindow.SettingsWindowActive += OnSettingsWindowActive;
@@ -547,12 +548,16 @@ public partial class MainWindow : Window, BrowserWindow
     private void StartCheckForegroundWindowTimer()
     {
         _timerCheckForegroundFocus.Stop();
+        if (!App.Settings.GeneralSettings.AlwaysOnTop) return;
+
         _timerTick = 0;
         _timerCheckForegroundFocus.Start();
     }
 
     private void CheckForegroundWindow()
     {
+        if (!App.Settings.GeneralSettings.AlwaysOnTop) return;
+
         IntPtr foregroundWindow = GetForegroundWindow();
         var hwnd = new WindowInteropHelper(this).Handle;
 
@@ -610,9 +615,12 @@ public partial class MainWindow : Window, BrowserWindow
             WindowHelper.SetWindowExDefault(hwnd);
             this.AppTitleBar.Visibility = Visibility.Visible;
 
-            this.Topmost = false;
-            this.Activate();
-            this.Topmost = true;
+            if (App.Settings.GeneralSettings.AlwaysOnTop)
+            {
+                this.Topmost = false;
+                this.Activate();
+                this.Topmost = true;
+            }
 
             if (this.cOpacity <= 0)
                 this.overlay.Opacity = 0.01;
@@ -652,9 +660,12 @@ public partial class MainWindow : Window, BrowserWindow
 
         _hiddenBorders = false;
 
-        this.Topmost = false;
-        this.Activate();
-        this.Topmost = true;
+        if (App.Settings.GeneralSettings.AlwaysOnTop)
+        {
+            this.Topmost = false;
+            this.Activate();
+            this.Topmost = true;
+        }
 
         CheckForegroundWindow();
     }
@@ -684,9 +695,12 @@ public partial class MainWindow : Window, BrowserWindow
 
         _hiddenBorders = true;
 
-        this.Topmost = false;
-        this.Activate();
-        this.Topmost = true;
+        if (App.Settings.GeneralSettings.AlwaysOnTop)
+        {
+            this.Topmost = false;
+            this.Activate();
+            this.Topmost = true;
+        }
 
         CheckForegroundWindow();
     }
@@ -845,7 +859,7 @@ public partial class MainWindow : Window, BrowserWindow
 
     private void MenuItem_VisitWebsite(object sender, RoutedEventArgs e)
     {
-        ShellHelper.OpenUrl("https://github.com/baffler/Transparent-Twitch-Chat-Overlay/releases/latest");
+        ShellHelper.OpenUrl(AppInfo.RepositoryUrl + "/releases/latest");
         e.Handled = true;
     }
 
@@ -1168,6 +1182,8 @@ public partial class MainWindow : Window, BrowserWindow
         // Settings were saved
         if (settingsWindow.ShowDialog() == true)
         {
+            ApplyAlwaysOnTopSetting();
+
             if (Enum.IsDefined(typeof(ChatTypes), App.Settings.GeneralSettings.ChatType))
             {
                 var chatType = (ChatTypes)App.Settings.GeneralSettings.ChatType;
@@ -1232,13 +1248,13 @@ public partial class MainWindow : Window, BrowserWindow
     private void Window_Deactivated(object sender, EventArgs e)
     {
         Window window = (Window)sender;
-        window.Topmost = true;
+        window.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
     }
 
     private void Window_PreviewLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         Window window = (Window)sender;
-        window.Topmost = true;
+        window.Topmost = App.Settings.GeneralSettings.AlwaysOnTop;
     }
 
     private void btnSettings_Click(object sender, RoutedEventArgs e)
@@ -1313,7 +1329,7 @@ public partial class MainWindow : Window, BrowserWindow
 #else
         _logger.LogInformation("Checking for updates...");
 
-        var mgr = new UpdateManager(new GithubSource("https://github.com/baffler/Transparent-Twitch-Chat-Overlay", null, false));
+        var mgr = new UpdateManager(new GithubSource(AppInfo.RepositoryUrl, null, false));
 
         try
         {
@@ -1681,8 +1697,22 @@ public partial class MainWindow : Window, BrowserWindow
         }
     }
 
+    public void ApplyAlwaysOnTopSetting()
+    {
+        bool alwaysOnTop = App.Settings.GeneralSettings.AlwaysOnTop;
+        this.Topmost = alwaysOnTop;
+        foreach (BrowserWindow window in this.windows)
+            window.SetTopMost(alwaysOnTop);
+
+        if (!alwaysOnTop)
+            _timerCheckForegroundFocus.Stop();
+    }
+
     public void SetTopMost(bool topMost)
     {
+        this.Topmost = topMost;
+        if (!topMost) return;
+
         if (this.WindowState == WindowState.Minimized)
         {
             this.WindowState = WindowState.Normal;

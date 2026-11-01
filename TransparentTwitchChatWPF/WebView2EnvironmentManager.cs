@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,7 +22,7 @@ public static class WebView2EnvironmentManager
                 AdditionalBrowserArguments = "--autoplay-policy=no-user-gesture-required --disable-background-timer-throttling --msWebView2CancelInitialNavigation"
             };
 
-            string userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TransparentTwitchChatWPF");
+            string userDataFolder = App.Settings.UserDataFolder;
             _environmentTask = CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
         }
 

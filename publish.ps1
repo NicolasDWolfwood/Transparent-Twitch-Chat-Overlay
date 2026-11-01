@@ -1,25 +1,45 @@
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^\d+\.\d+\.\d+$')]
     [string]$Version
 )
 
-Write-Host "Building NativeChat..." -ForegroundColor Cyan
-Push-Location .\NativeChatClient
-if (-not (Test-Path .\node_modules)) {
-    Write-Host "Restoring NativeChat npm dependencies..." -ForegroundColor Cyan
-    npm.cmd ci
-    if ($LASTEXITCODE -ne 0) { Write-Host "npm ci failed." -ForegroundColor Red; exit 1 }
+$ErrorActionPreference = 'Stop'
+$taskPublish = Join-Path $PSScriptRoot "artifacts\publish-$Version"
+$taskPackages = Join-Path $PSScriptRoot "artifacts\packages-$Version"
+
+Push-Location $PSScriptRoot
+try {
+    Write-Host 'Building NativeChat...'
+    Push-Location NativeChatClient
+    try {
+        npm.cmd ci --no-audit --no-fund
+        if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' }
+        npm.cmd run build
+        if ($LASTEXITCODE -ne 0) { throw 'NativeChat build failed.' }
+    }
+    finally { Pop-Location }
+
+    Write-Host 'Publishing Windows x64 app...'
+    dotnet publish TransparentTwitchChatWPF\TransparentTwitchChatWPF.csproj -c Release -o $taskPublish -r win-x64 --self-contained true "-p:Version=$Version" "-p:InformationalVersion=$Version"
+    if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
+
+    Write-Host 'Checking window behavior and settings...'
+    & .\verification\run.ps1
+
+    Copy-Item -LiteralPath LICENSE -Destination (Join-Path $taskPublish 'LICENSE.txt')
+    Copy-Item -LiteralPath CUSTOM_BUILD.md -Destination (Join-Path $taskPublish 'BUILD-NOTES.md')
+
+    Write-Host 'Packaging installer and portable app...'
+    dotnet tool run vpk -- pack --packId TransparentTwitchChatAlwaysOnTop --packVersion $Version --packTitle 'Twitch Chat - Always on top option' --packDir $taskPublish --mainExe TransparentTwitchChatWPF.exe --delta None -o $taskPackages
+    if ($LASTEXITCODE -ne 0) { throw 'Velopack packaging failed.' }
+
+    $taskAssets = Get-ChildItem -LiteralPath $taskPackages -File | Where-Object Name -ne 'SHA256SUMS.txt' | Sort-Object Name
+    $taskAssets | ForEach-Object {
+        $taskHash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        "$taskHash  $($_.Name)"
+    } | Set-Content -LiteralPath (Join-Path $taskPackages 'SHA256SUMS.txt') -Encoding ascii
+
+    Write-Host "Release $Version is ready in $taskPackages"
 }
-npm.cmd run build
-if ($LASTEXITCODE -ne 0) { Write-Host "npm build failed." -ForegroundColor Red; exit 1 }
-Pop-Location
-
-Write-Host "Publishing .NET app..." -ForegroundColor Cyan
-dotnet publish -p:PublishProfile=FolderProfile
-if ($LASTEXITCODE -ne 0) { Write-Host "dotnet publish failed." -ForegroundColor Red; exit 1 }
-
-Write-Host "Packaging with vpk..." -ForegroundColor Cyan
-vpk pack --packId TransparentTwitchChat --packVersion $Version --packDir .\publish --mainExe TransparentTwitchChatWPF.exe
-if ($LASTEXITCODE -ne 0) { Write-Host "vpk packaging failed." -ForegroundColor Red; exit 1 }
-
-Write-Host "Done! Published version $Version" -ForegroundColor Green
+finally { Pop-Location }

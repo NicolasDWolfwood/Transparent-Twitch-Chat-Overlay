@@ -1,53 +1,62 @@
 name: Create Velopack Release
 
-# This workflow runs when a new tag is pushed that starts with 'v'
 on:
   push:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-pack:
-    # Use the latest Windows runner
     runs-on: windows-latest
-    # To allow github to upload the release files
-    permissions:
-      contents: write
-
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      # 1. Check out the code from the repository
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # 2. Set up the .NET SDK on the runner
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x' # Use the .NET version your project needs
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: NativeChatClient/package-lock.json
 
-      # 3. Restore project's dependencies
-      - name: Restore dependencies
-        run: dotnet restore
-
-      # 4. Build application for release
-      - name: Build and publish application
-        run: dotnet publish -c Release -o publish -r win-x64 --self-contained true
-        
-      # 5. Get the version number from the Git tag
-      - name: Get version from tag
-        id: get-version
+      - name: Ensure WebView2 runtime for window checks
         run: |
-            $version = "${{ github.ref_name }}".Substring(1)
-            echo "version=$version" >> $env:GITHUB_OUTPUT
-        shell: pwsh
+          $taskInstaller = Start-Process -FilePath .\TransparentTwitchChatWPF\MicrosoftEdgeWebview2Setup.exe -ArgumentList '/silent', '/install' -WindowStyle Hidden -Wait -PassThru
+          if ($taskInstaller.ExitCode -ne 0) { Write-Warning "WebView2 bootstrapper returned $($taskInstaller.ExitCode); checking installed runtime during verification." }
 
-      # 6. Download, Pack, and Upload with Velopack
-      - name: Create and Upload Velopack Release
-        run: |
-          dotnet tool install -g vpk
-          vpk download github --repoUrl https://github.com/${{ github.repository }}
-          vpk pack -u TransparentTwitchChat -v ${{ steps.get-version.outputs.version }} --packDir publish --mainExe TransparentTwitchChatWPF.exe
-          vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "Release v${{ steps.get-version.outputs.version }}" --tag ${{ github.ref_name }} --token ${{ secrets.GITHUB_TOKEN }}
-        shell: pwsh
+      - name: Build, verify, and package
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $taskVersion = $env:RELEASE_TAG.Substring(1)
+          .\publish.ps1 -Version $taskVersion
+
+      - name: Publish release with Windows downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $taskVersion = $env:RELEASE_TAG.Substring(1)
+          $taskAssets = Get-ChildItem -LiteralPath "artifacts\packages-$taskVersion" -File | Select-Object -ExpandProperty FullName
+          gh release create $env:RELEASE_TAG @taskAssets --verify-tag --title "v$taskVersion - Optional always on top" --notes-file RELEASE_NOTES.md --latest
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed.' }
+
+      - name: Retain validation output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: window-behavior-results
+          path: artifacts/verification-results.txt
+          if-no-files-found: ignore

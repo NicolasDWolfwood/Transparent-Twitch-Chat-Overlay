@@ -1,10 +1,12 @@
-﻿using NuGet.Versioning;
+using NuGet.Versioning;
 using Velopack.Locators;
 
 namespace TransparentTwitchChatWPF;
 
 public static class AppInfo
 {
+    public const string RepositoryUrl = "https://github.com/NicolasDWolfwood/Transparent-Twitch-Chat-Overlay";
+
     public static string Version { 
         get 
         {
@@ -17,7 +19,7 @@ public static class AppInfo
             }
             else
             {
-                return $"1.1.x";
+                return typeof(AppInfo).Assembly.GetName().Version.ToString(3);
             }
         } 
     }
