@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidatePattern('^\d+\.\d+\.\d+$')]
+    [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')]
     [string]$Version
 )
 
@@ -10,11 +10,14 @@ $taskPackages = Join-Path $PSScriptRoot "artifacts\packages-$Version"
 
 Push-Location $PSScriptRoot
 try {
+    New-Item -ItemType Directory -Path (Join-Path $PSScriptRoot 'artifacts') -Force | Out-Null
     Write-Host 'Building NativeChat...'
     Push-Location NativeChatClient
     try {
         npm.cmd ci --no-audit --no-fund
         if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' }
+        npm.cmd test | Tee-Object -FilePath (Join-Path $PSScriptRoot 'artifacts\native-reliability-tests.txt')
+        if ($LASTEXITCODE -ne 0) { throw 'NativeChat reliability checks failed.' }
         npm.cmd run build
         if ($LASTEXITCODE -ne 0) { throw 'NativeChat build failed.' }
     }
@@ -31,7 +34,7 @@ try {
     Copy-Item -LiteralPath CUSTOM_BUILD.md -Destination (Join-Path $taskPublish 'BUILD-NOTES.md')
 
     Write-Host 'Packaging installer and portable app...'
-    dotnet tool run vpk -- pack --packId TransparentTwitchChatAlwaysOnTop --packVersion $Version --packTitle 'Twitch Chat - Always on top option' --packDir $taskPublish --mainExe TransparentTwitchChatWPF.exe --delta None -o $taskPackages
+    dotnet tool run vpk -- pack --packId TransparentTwitchChatAlwaysOnTop --packVersion $Version --packTitle 'Twitch Chat Overlay' --packDir $taskPublish --mainExe TransparentTwitchChatWPF.exe --delta None -o $taskPackages
     if ($LASTEXITCODE -ne 0) { throw 'Velopack packaging failed.' }
 
     $taskAssets = Get-ChildItem -LiteralPath $taskPackages -File | Where-Object Name -ne 'SHA256SUMS.txt' | Sort-Object Name

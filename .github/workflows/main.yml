@@ -50,7 +50,8 @@ jobs:
         run: |
           $taskVersion = $env:RELEASE_TAG.Substring(1)
           $taskAssets = Get-ChildItem -LiteralPath "artifacts\packages-$taskVersion" -File | Select-Object -ExpandProperty FullName
-          gh release create $env:RELEASE_TAG @taskAssets --verify-tag --title "v$taskVersion - Optional always on top" --notes-file RELEASE_NOTES.md --latest
+          $taskReleaseFlags = if ($taskVersion.Contains('-')) { @('--prerelease', '--latest=false') } else { @('--latest') }
+          gh release create $env:RELEASE_TAG @taskAssets --verify-tag --title "v$taskVersion - Stream reliability" --notes-file RELEASE_NOTES.md @taskReleaseFlags
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed.' }
 
       - name: Retain validation output
@@ -58,5 +59,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: window-behavior-results
-          path: artifacts/verification-results.txt
+          path: |
+            artifacts/verification-results.txt
+            artifacts/native-reliability-tests.txt
+            artifacts/settings-preview.png
           if-no-files-found: ignore
